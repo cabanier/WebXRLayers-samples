@@ -1,0 +1,756 @@
+<!doctype html>
+<!--
+Copyright 2020 The Immersive Web Community Group
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+-->
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1, user-scalable=no'>
+    <meta name='mobile-web-app-capable' content='yes'>
+    <meta name='apple-mobile-web-app-capable' content='yes'>
+    <link rel='icon' type='image/png' sizes='32x32' href='favicon-32x32.png'>
+    <link rel='icon' type='image/png' sizes='96x96' href='favicon-96x96.png'>
+    <link rel='stylesheet' href='css/common.css'>
+
+    <title>Multilayer Equirect 180</title>
+    <script src="js/wglu/wglu-program.js"></script>
+    <script src="js/wglu/wglu-url.js"></script>
+    <script src="js/stereo-util.js"></script>
+  </head>
+  <body>
+    <header>
+      <details open>
+        <summary>Multilayer Equirect 180</summary>
+        <p>
+          This sample shows how to draw a scene into a projection layer.
+          <a class="back" href="./">Back</a>
+        </p>
+        <input type="checkbox" id="do_stencil_buffer">stencil buffer</input>
+        <input type="checkbox" id="stereo_layer" value="Bike">stereo equirect layer</input>
+        <input type="checkbox" id="change_order">change order</input>
+        <input type="checkbox" id="update_cylinder_every_frame">Update cyl every frm</input>
+        <input type="number" id="radius_txt" value="10">Radius</input>
+      </details>
+    </header>
+    <script type="module">
+      import {WebXRButton} from './js/util/webxr-button.js';
+      import {Scene, WebXRView} from './js/render/scenes/scene.js';
+      import {Node} from './js/render/core/node.js';
+      import {Gltf2Node} from './js/render/nodes/gltf2.js';
+      import {Renderer, createWebGLContext} from './js/render/core/renderer.js';
+      import {CubeSeaNode} from './js/render/nodes/cube-sea.js';
+      import {InlineViewerHelper} from './js/util/inline-viewer-helper.js';
+      import {QueryArgs} from './js/util/query-args.js';
+      import {BoxBuilder} from './js/render/geometry/box-builder.js';
+      import {PbrMaterial} from './js/render/materials/pbr.js';
+      import {mat4, vec3, quat} from './js/render/math/gl-matrix.js';
+  
+      // If requested, use the polyfill to provide support for mobile devices
+      // and devices which only support WebVR.
+      import WebXRPolyfill from './js/third-party/webxr-polyfill/build/webxr-polyfill.module.js';
+      if (QueryArgs.getBool('usePolyfill', true)) {
+        let polyfill = new WebXRPolyfill();
+      }
+
+      let noAlpha = WGLUUrl.getBool('noAlpha', false);
+      let boxTable = {};
+      let eqr_pos = { x: 0.0, y: 0.0, z: 0.0 };
+      let eqr_orient = { yaw: 0.0, pitch: 0.0, roll: 0.0 };
+
+      // XR globals.
+      let do_stencil_buffer = document.getElementById('do_stencil_buffer');
+      let xrButton = null;
+      let xrImmersiveRefSpace = null;
+      let inlineViewerHelper = null;
+      let xrGLFactory = null;
+      let xrFramebuffer = null;
+      let xrDepthBuffer = null;
+      let gl_ext = null;
+      let xr_stencil = false;
+      let texture_copied = false;
+      let stereoUtil = null;
+      let number_of_images = 0;
+
+      // WebGL scene globals.
+      let stereo_layer = document.getElementById("stereo_layer");
+      let gl = null;
+      let renderer = null;
+      let scene = new Scene();
+      scene.addNode(new CubeSeaNode({cubeCount: 5, halfOnly:true, autoRotate:false}));
+      let eqr_texture;
+      let eqr_texture_width;
+      let eqr_texture_height;
+      let eqr_layer = null;
+      let proj_layer = null;
+      let cyl_texture;
+      let cyl_texture_width;
+      let cyl_texture_height;
+      let cyl_layer = null;
+      let eqr_layer_idx = 0;
+      let proj_layer_idx = 1;
+      let cyl_layer_idx = 2;
+
+      function initXR() {
+        xrButton = new WebXRButton({
+          onRequestSession: onRequestSession,
+          onEndSession: onEndSession
+        });
+        document.querySelector('header').appendChild(xrButton.domElement);
+
+        if (navigator.xr) {
+          navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+            xrButton.enabled = supported;
+          });
+
+          navigator.xr.requestSession('inline').then(onSessionStarted);
+        }
+      }
+
+      //
+      // Initialize a texture and load an image.
+      // When the image finished loading copy it into the texture.
+      //
+      function loadTexture(gl, url, complete_callback) {
+        const texture = gl.createTexture();
+        loadIntoTexture(gl, texture, url, complete_callback);
+        return texture;
+      }
+      function isPowerOf2(value) {
+        return (value & (value - 1)) == 0;
+      }
+      function loadIntoTexture(gl, texture, url, complete_callback) {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+
+        // Because images have to be download over the internet
+        // they might take a moment until they are ready.
+        // Until then put a single pixel in the texture so we can
+        // use it immediately. When the image has finished downloading
+        // we'll update the texture with the contents of the image.
+        const level = 0;
+        const internalFormat = gl.RGBA;
+        const width = 1;
+        const height = 1;
+        const border = 0;
+        const srcFormat = gl.RGBA;
+        const srcType = gl.UNSIGNED_BYTE;
+        const pixel = new Uint8Array([0, 0, 255, 255]);  // opaque blue
+        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
+                      width, height, border, srcFormat, srcType,
+                      pixel);
+
+        const image = new Image();
+        image.onload = function() {
+          gl.bindTexture(gl.TEXTURE_2D, texture);
+          gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
+                        srcFormat, srcType, image);
+
+          // WebGL1 has different requirements for power of 2 images
+          // vs non power of 2 images so check if the image is a
+          // power of 2 in both dimensions.
+          if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+             // Yes, it's a power of 2. Generate mips.
+             gl.generateMipmap(gl.TEXTURE_2D);
+             //?gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+             //?gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+          } else {
+             // No, it's not a power of 2. Turn of mips and set
+             // wrapping to clamp to edge
+             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+          }
+          complete_callback(image.width, image.height);
+        };
+        eqr_texture_width = eqr_texture_height = undefined;
+        image.src = url;
+      }
+
+      function initGL() {
+        if (gl)
+          return;
+
+        gl = createWebGLContext({
+          xrCompatible: true,
+          webgl2: true,
+          alpha: !noAlpha
+        });
+        document.body.appendChild(gl.canvas);
+        gl_ext = gl.getExtension('WEBGL_depth_texture');
+
+        function onResize() {
+          gl.canvas.width = gl.canvas.clientWidth * window.devicePixelRatio;
+          gl.canvas.height = gl.canvas.clientHeight * window.devicePixelRatio;
+        }
+        window.addEventListener('resize', onResize);
+        onResize();
+
+        // Set up a non-black clear color so that we can see if something renders wrong.
+        gl.clearColor(0.1, 0.2, 0.3, 1.0);
+
+        renderer = new Renderer(gl);
+
+        scene.setRenderer(renderer);
+
+        stereoUtil = new VRStereoUtil(gl);
+
+      }
+
+
+      const BOX_SIZE = 0.03;
+      const BOX_MOTION_RANGE = 0.010;
+      const BOX_SEPARATION = 0.04;
+      const BOX_SET_HEIGHT = 0.03;
+      const BOX_SET_DEPTH = -0.06;
+
+      class GamepadBox extends Node {
+        constructor(position) {
+          super();
+
+          this.position = position;
+          let boxBuilder = new BoxBuilder();
+          boxBuilder.pushCube([0, 0, 0], BOX_SIZE);
+          let boxPrimitive = boxBuilder.finishPrimitive(renderer);
+          let boxMaterial = new PbrMaterial();
+          boxMaterial.baseColorFactor.value = [0.1, 0.1, 0.1, 1]; // grey
+          this.renderPrimitive = renderer.createRenderPrimitive(boxPrimitive, boxMaterial);
+
+          this.addRenderPrimitive(this.renderPrimitive);
+
+          mat4.identity(this.matrix);
+          mat4.translate(this.matrix, this.matrix, this.position);
+
+          this._value = 0.0;
+          this._pressed = false;
+          this._touched = false;
+          this._dx = 0.0;
+          this._dy = 0.0;
+        }
+
+        _updateTransform() {
+          mat4.identity(this.matrix);
+          mat4.translate(this.matrix, this.matrix, this.position);
+          mat4.translate(this.matrix, this.matrix, [
+            this._dx * BOX_MOTION_RANGE,
+            -this._value * BOX_SIZE * 0.5,
+            this._dy * BOX_MOTION_RANGE
+          ]);
+          mat4.scale(this.matrix, this.matrix, [1.0, 1.05 - this._value, 1.0]);
+        }
+
+        _updateColor() {
+          let color = null;
+          if (this._pressed) {
+            color = [1, 0, 0, 1]; // Red
+          } else if (this._touched) {
+            color = [0.1, 0.5, 0.1, 1]; // Dark Green
+          } else {
+            color = [0.1, 0.1, 0.1, 1];  // Grey
+          }
+
+          this.renderPrimitive.uniforms.baseColorFactor.value = color;
+        }
+
+        set value(value) {
+          if (value != this._value) {
+            this._value = value;
+            this._updateTransform();
+          }
+        }
+
+        get value() {
+          return this._value;
+        }
+
+        set pressed(value) {
+          if (value != this._pressed) {
+            this._pressed = value;
+            this._updateColor();
+          }
+        }
+
+        get pressed() {
+          return this._pressed;
+        }
+
+        set touched(value) {
+          if (value != this._touched) {
+            this._touched = value;
+            this._updateColor();
+          }
+        }
+
+        get touched() {
+          return this._touched;
+        }
+
+        move(dx, dy) {
+          this._dx = dx;
+          this._dy = dy;
+          this._updateTransform();
+        }
+      }
+
+      class GamepadBoxSet extends Node {
+        constructor(buttonCount, axesCount) {
+          super();
+
+          let axesBoxCount = Math.ceil(axesCount / 2);
+          let rowLength = Math.max(buttonCount, axesBoxCount);
+
+          // Place the boxes in a horizontal line
+          this.buttonBoxes = [];
+          let hl = (rowLength - 1) * BOX_SEPARATION * 0.5;
+          for (let x = 0; x < buttonCount; ++x) {
+            let box = new GamepadBox([(x * BOX_SEPARATION) - hl, BOX_SET_HEIGHT, BOX_SET_DEPTH]);
+            this.buttonBoxes.push(box);
+            this.addNode(box);
+          }
+
+          this.axesBoxes = [];
+          for (let x = 0; x < axesBoxCount; ++x) {
+            let box = new GamepadBox([(x * BOX_SEPARATION) - hl, BOX_SET_HEIGHT, BOX_SET_DEPTH * 2]);
+            this.axesBoxes.push(box);
+            this.addNode(box);
+          }
+        }
+
+        update_state(gamepad) {
+          // The boxes associated with any given button will turn green if
+          // touched and red if pressed. The box height will also scale based
+          // on the button's value to make it appear like a button being pushed.
+          for (let i = 0; i < gamepad.buttons.length; ++i) {
+            this.buttonBoxes[i].pressed = gamepad.buttons[i].pressed;
+            this.buttonBoxes[i].value = gamepad.buttons[i].value;
+            this.buttonBoxes[i].touched = gamepad.buttons[i].touched;
+          }
+
+          // Axes are assumed to come in X/Y pairs and will wiggle the
+          // associated boxes around when moved.
+          for (let i = 0, j = 0; i < gamepad.axes.length; i+=2, ++j) {
+            this.axesBoxes[j].move(gamepad.axes[i], i + 1 < gamepad.axes.length ? gamepad.axes[i + 1] : 0);
+          }
+        }
+      }
+
+      function updateEqrTransform() {
+        const orient = quat.create();
+        quat.fromEuler(orient, eqr_orient.pitch, eqr_orient.yaw, eqr_orient.roll);
+        eqr_layer.transform = new XRRigidTransform(eqr_pos, {x: orient[0], y: orient[1], z: orient[2], w: orient[3]});
+      }
+      function ProcessGamepad(gamepad, hand, pose) {
+        if (!(hand in boxTable)) {
+          boxTable[hand] = new GamepadBoxSet(gamepad.buttons.length, gamepad.axes.length);
+          scene.addNode(boxTable[hand]);
+        }
+
+        boxTable[hand].update_state(gamepad);
+
+        if (eqr_layer != null) {
+          if (hand == "right") {
+            const tilt = gamepad.axes[3];
+            const rot = gamepad.axes[2];
+
+            // tilt
+            eqr_orient.pitch = tilt * 90;
+            eqr_orient.yaw = rot * 90;
+            updateEqrTransform();
+          } else if (hand == "left") {
+            const zoom = gamepad.axes[3];
+            const horizontal_shift = gamepad.axes[2];
+
+            // tilt
+            eqr_pos.x = horizontal_shift * 4;
+            eqr_pos.z = zoom * 3;
+            updateEqrTransform();
+          }
+        }
+
+        // Update the pose of the boxes to sync with the controller.
+        if (pose) {
+          boxTable[hand].matrix = pose.transform.matrix;
+        }
+        if ("hapticActuators" in gamepad && gamepad.hapticActuators != null && gamepad.hapticActuators.length > 0) {
+          for (let j = 0; j < gamepad.buttons.length; ++j) {
+            if (gamepad.buttons[j].pressed) {
+              // Vibrate the gamepad using to the value of the button as
+              // the vibration intensity, normalized to 0.0..1.0 range.
+              gamepad.hapticActuators[0].pulse((j + 1.0) / (gamepad.buttons.length + 1), 1000);
+              break;
+            }
+          }
+        }
+      }
+
+      function onRequestSession() {
+        return navigator.xr.requestSession('immersive-vr',{
+            requiredFeatures: ['layers']
+        }).then((session) => {
+          xrButton.setSession(session);
+          session.isImmersive = true;
+          onSessionStarted(session);
+        });
+      }
+
+      function onVisibilityChange(event) {
+        console.log("Visibility change for "
+          + (event.session.isImmersive? "immersive" : "non-immersive")
+          + " session: "
+          + event.session.visibilityState);
+      }
+
+      async function onSessionStarted(session) {
+        session.addEventListener('end', onSessionEnded);
+        session.addEventListener('visibilitychange', onVisibilityChange);
+
+        initGL();
+
+        if (session.isImmersive) {
+          if (stereo_layer.checked) {
+            number_of_images = 2;
+            eqr_texture = loadTexture(gl, 'media/textures/chess-pano-4k.jpg', (w,h) => {
+              eqr_texture_width  = w;
+              eqr_texture_height = h;
+              onImageLoaded(session);
+            });
+            cyl_texture = loadTexture(gl, 'media/textures/stereo-top-bottom-image.png', (w,h) => {
+              cyl_texture_width  = w;
+              cyl_texture_height = h;
+              onImageLoaded(session);
+            });
+          } else {
+            number_of_images = 2;
+            eqr_texture = loadTexture(gl, 'media/textures/mono-equirect180.png ', (w, h) => {
+              eqr_texture_width  = w;
+              eqr_texture_height = h;
+              onImageLoaded(session);
+            });
+            cyl_texture = loadTexture(gl, 'media/textures/eilenriede-park-2k.png', (w,h) => {
+              cyl_texture_width  = w;
+              cyl_texture_height = h;
+              onImageLoaded(session);
+            });
+          }
+          texture_copied = false;
+        } else {
+          let glLayer = new XRWebGLLayer(session, gl);
+          session.updateRenderState({ baseLayer: glLayer });
+          finalizeSessionStart(session);
+        }
+      }
+      function finalizeSessionStart(session) {
+        let refSpaceType = session.isImmersive ? 'local' : 'viewer';
+        session.requestReferenceSpace(refSpaceType).then((refSpace) => {
+          if (session.isImmersive) {
+            xrImmersiveRefSpace = refSpace;
+
+            // position the cylinder layer
+            //let cyl_layer = session.renderState.layers[cyl_layer_idx];
+            //cyl_layer.space = xrImmersiveRefSpace;
+            let pos = {x: -1.0, y: 0.0, z: -2.0};
+            let orient = {x:0,y:0,z:0,w:1};
+            cyl_layer.transform = new XRRigidTransform(pos, orient);
+          } else {
+            // In most samples moving forward we'll use this helper class rather
+            // than the reference space directly to inject the necessary logic
+            // for looking around an inline session with mouse and touch input.
+            inlineViewerHelper = new InlineViewerHelper(gl.canvas, refSpace);
+          }
+          session.requestAnimationFrame(onXRFrame);
+        });
+      }
+
+      function eqr_angles_to_bias_scale(eqrlayer, radius, centralHorizontalAngle, upperVerticalAngle, lowerVerticalAngle) {
+  
+            // converting from equirect2 parameters
+            //const centralHorizontalAngle = (2.0 * Math.PI) / 3.0;
+            //const upperVerticalAngle =
+            //    (Math.PI / 2.0) * (2.0 / 3.0); // 60 degrees north latitude
+            // const float lowerVerticalAngle = -(Math.PI / 2.0) * (2.0 / 3.0); // 60 degrees
+            // south latitude const float upperVerticalAngle = 0.0f; // equator
+            eqrlayer.scaleX = (2.0 * Math.PI) / centralHorizontalAngle;
+            eqrlayer.scaleY = Math.PI / (upperVerticalAngle - lowerVerticalAngle);
+            eqrlayer.biasX = 0.5 - eqrlayer.scaleX * 0.5;
+            // the image origin is in the upper left
+            const upperFrac = 0.5 - (upperVerticalAngle / Math.PI);
+            eqrlayer.biasY = -eqrlayer.scaleY * upperFrac;
+        
+                                                /*
+        const hemifrac = central_angle / (2.0 * Math.PI);
+        upper_vert_angle = (upper_vert_angle + Math.PI / 2.0)
+        lower_vert_angle = (lower_vert_angle + Math.PI / 2.0)
+        const total_vert_angle = upper_vert_angle + lower_vert_angle;
+        const upper_vertscale = upper_vert_angle / Math.PI;
+        const lower_vertscale = lower_vert_angle / Math.PI;
+        const vert_scale = total_vert_angle / (2.0 * Math.PI);
+        const vert_offset = upper_vert_angle / total_vert_angle;
+        let trans1 = mat4.create();
+        let trans2 = mat4.create();
+        let scale = mat4.create();
+        mat4.fromTranslation(trans1, [ -0.5, -vert_offset, 0.0 ]);
+        mat4.fromTranslation(trans2, [  0.5,  vert_offset, 0.0 ]);
+        mat4.fromScaling(scale, [hemifrac, vert_scale, 1.0]);
+        let inv_tex_mat = mat4.create();
+        mat4.multiply(inv_tex_mat, scale, trans1);
+        mat4.multiply(inv_tex_mat, trans2, inv_tex_mat);
+        let tex_mat = mat4.create();
+        mat4.invert(tex_mat, inv_tex_mat);
+
+        let scaling = vec3.create();
+        mat4.getScaling(scaling, tex_mat);
+
+        let trans = vec3.create();
+        mat4.getTranslation(trans, tex_mat);
+
+        eqrlayer.scaleX = scaling[0];
+        eqrlayer.scaleY = scaling[1];
+        eqrlayer.biasX = trans[0];
+        eqrlayer.biasY = trans[1]; */
+      }
+
+      function onImageLoaded(session) {
+        if (--number_of_images != 0)
+          return;
+        xrFramebuffer = gl.createFramebuffer();
+        xrGLFactory = new XRWebGLBinding(session, gl);
+        session.requestReferenceSpace('local').then((refSpace) => {
+          let projlayer = xrGLFactory.createProjectionLayer("texture", {space: refSpace, stencil: do_stencil_buffer.checked});
+          let eqrlayer = xrGLFactory.createEquirectLayer("texture", {
+            space: refSpace, 
+            viewPixelWidth: eqr_texture_width, 
+            viewPixelHeight: eqr_texture_height / (stereo_layer.checked ? 2 : 1), 
+            layout: ((stereo_layer.checked) ? "stereo-top-bottom" : "mono")
+          });
+
+          eqr_angles_to_bias_scale(eqrlayer, 0, Math.PI, Math.PI/2, -Math.PI/2); 
+//          eqr_angles_to_bias_scale(eqrlayer, 4.0, (2.0 * Math.PI) / 3.0, (Math.PI / 2.0) * (2.0 / 3.0), Math.PI / 5); 
+//          eqr_angles_to_bias_scale(eqrlayer, 4.0, (2.0 * Math.PI) / 3.0, (Math.PI / 2.0) * (2.0 / 3.0), 0.0); 
+          //eqr_angles_to_bias_scale(eqrlayer, 4.0, (2.0 * Math.PI) / 3.0, (Math.PI / 2.0) * (2.0 / 3.0), -(Math.PI / 2.0) * (2.0 / 3.0)); 
+          console.log("eqrlayer.scaleX = " + eqrlayer.scaleX);
+          console.log("eqrlayer.scaleY = " + eqrlayer.scaleY);
+          console.log("eqrlayer.biasX = " + eqrlayer.biasX);
+          console.log("eqrlayer.biasY = " + eqrlayer.biasY);
+        //  eqrlayer.scaleX = 2;
+        //  eqrlayer.scaleY = 1;
+        //  eqrlayer.biasX = -0.5;
+          eqrlayer.radius = document.getElementById("radius_txt").value;
+
+          cyl_layer = xrGLFactory.createCylinderLayer("texture", {
+            space: refSpace, 
+            viewPixelWidth: cyl_texture_width, 
+            viewPixelHeight: cyl_texture_height / (stereo_layer.checked ? 2 : 1), 
+            layout: ((stereo_layer.checked) ? "stereo-top-bottom" : "mono")
+          });
+          if (change_order.checked) {
+            session.updateRenderState({ layers: [ eqrlayer, cyl_layer, projlayer ] });
+            eqr_layer_idx = 0;
+            cyl_layer_idx = 1;
+            proj_layer_idx = 2;
+          } else {
+            session.updateRenderState({ layers: [ eqrlayer, projlayer, cyl_layer ] });
+            eqr_layer_idx = 0;
+            proj_layer_idx = 1;
+            cyl_layer_idx = 2;
+          }
+          finalizeSessionStart(session);
+        });
+      }
+
+      function onEndSession(session) {
+        session.end();
+      }
+
+      function onSessionEnded(event) {
+        if (event.session.isImmersive) {
+          xrButton.setSession(null);
+        }
+      }
+
+      function onXRFrame(t, frame) {
+        let session = frame.session;
+        let refSpace = session.isImmersive ?
+                         xrImmersiveRefSpace :
+                         inlineViewerHelper.referenceSpace;
+        let pose = frame.getViewerPose(refSpace);
+
+        scene.startFrame();
+
+        session.requestAnimationFrame(onXRFrame);
+
+        if (session.isImmersive &&
+            (cyl_layer.needsRedraw || eqr_layer.needsRedraw)) {
+          texture_copied = false;
+        }
+        if (session.isImmersive && !texture_copied) {
+          eqr_layer = session.renderState.layers[eqr_layer_idx];
+          proj_layer = session.renderState.layers[proj_layer_idx];
+          cyl_layer = session.renderState.layers[cyl_layer_idx];
+
+          texture_copied = true;
+          let fb = gl.createFramebuffer();
+          let glayer = xrGLFactory.getSubImage(eqr_layer, frame);
+          
+          gl.viewport(0, 0, eqr_texture_width, eqr_texture_height);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+          gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glayer.colorTexture, 0);
+
+          gl.disable(gl.SCISSOR_TEST);
+          gl.clearColor(1, 0, 0, 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          stereoUtil.blit(false, eqr_texture, 0, 0, 1, 1, eqr_texture_width, eqr_texture_height);
+          
+          glayer = xrGLFactory.getSubImage(cyl_layer, frame);
+          gl.viewport(0, 0, cyl_texture_width, cyl_texture_height);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+          gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glayer.colorTexture, 0);
+
+          gl.disable(gl.SCISSOR_TEST);
+          gl.clearColor(0, 1, 0, 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          stereoUtil.blit(false, cyl_texture, 0, 0, 1, 1, cyl_texture_width, cyl_texture_height);
+          
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+          gl.deleteFramebuffer(fb);
+        }
+        if (!session.isImmersive) {
+          gl.clearColor(0.1, 0.2, 0.3, 1.0);
+        }
+
+        if (pose) {
+          let glLayer = null;
+
+          if (session.isImmersive) {
+            gl.clearColor(0, 0, 0, 0);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, xrFramebuffer);
+          } else {
+            glLayer = session.renderState.baseLayer;
+            gl.bindFramebuffer(gl.FRAMEBUFFER, glLayer.framebuffer);
+          }
+          gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+          // This is a different rendering pattern than the previous samples
+          // used, but it should be more efficent. It's very common for apps
+          // being ported to XR to take existing 2D rendering code and call the
+          // top-level "drawScene" function once per XR view, effectively
+          // drawing a single eye at a time. However, this causes many state
+          // changes to be duplicated, which adds to the render loop's overhead.
+          // By providing the matrices and viewports as an array to the drawing
+          // function it can do all the necessary binding once and then call the
+          // actual draw commands in a tighter loop, only changing the matrices
+          // and viewport each time. This does mean that the viewport is changed
+          // much more frequently (N times per object instead of N times per
+          // scene) but it's typically a pretty cheap thing to change and will
+          // almost always be easily outweighed by the savings from not
+          // redundantly binding everything else.
+
+          // For example, a traditional draw loop would do this:
+
+          // Draw(views):
+          //   for each view in views:
+          //     setViewport();
+          //     for each object in scene:
+          //       bindProgram();
+          //       bindMatrices();
+          //       bindUniforms();
+          //       bindBuffers();
+          //       bindTextures();
+          //       draw();
+
+          // While this method results in a loop more like this:
+
+          // Draw(views):
+          //   for each object in scene:
+          //     bindProgram();  
+          //     bindUniforms();
+          //     bindBuffers();
+          //     bindTextures();
+          //     for each view in views:
+          //       setViewport();
+          //       bindMatrices();
+          //       draw();
+
+          // Note that for the complexity of the scene in this samples this
+          // won't make much visible performance difference, but we're using the
+          // more efficient pattern anyway as a way of promoting best practices.
+
+          // Updating cylinder layer every frame
+          if (update_cylinder_every_frame.checked && session.isImmersive) {
+            let glayer = xrGLFactory.getSubImage(cyl_layer, frame);
+            let fb = gl.createFramebuffer();
+            gl.viewport(0, 0, cyl_texture_width, cyl_texture_height);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glayer.colorTexture, 0);
+
+            gl.disable(gl.SCISSOR_TEST);
+            gl.clearColor(0, 1, 0, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            stereoUtil.blit(false, cyl_texture, 0, 0, 1, 1, cyl_texture_width, cyl_texture_height);
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.deleteFramebuffer(fb);
+          }
+          let views = [];
+          for (let view of pose.views) {
+            let viewport = null;
+            if (session.isImmersive) {
+
+              glLayer = xrGLFactory.getViewSubImage(proj_layer, view);
+              
+              glLayer.framebuffer = xrFramebuffer;
+              viewport = glLayer.viewport;
+              gl.bindFramebuffer(gl.FRAMEBUFFER, xrFramebuffer);
+              gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glLayer.colorTexture, 0);
+
+              if (do_stencil_buffer.checked) {
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.TEXTURE_2D, glLayer.depthStencilTexture, 0);
+              } else {
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, glLayer.depthStencilTexture, 0);
+              }
+            } else {
+              viewport = glLayer.getViewport(view);
+            }
+            // Gather all the values needed for one view and push it into the
+            // array of views to be drawn. WebXRView is a utility class that
+            // holds all the necessary values for drawing a single view.
+
+            // In future samples we'll hide this part away as well by using the
+            // scene.drawXRViews() function, which handles gathering these
+            // values internally.
+            views.push(new WebXRView(view, glLayer, viewport));
+          }
+
+          // Check for and respond to any gamepad state changes.
+          for (let source of session.inputSources) {
+            if (source.gamepad) {
+              let pose = frame.getPose(source.gripSpace, refSpace);
+              ProcessGamepad(source.gamepad, source.handedness, pose);
+            }
+          }
+          scene.updateInputSources(frame, refSpace);
+          scene.drawViewArray(views);
+        }
+        
+        scene.endFrame();
+      }
+
+      initXR();
+    </script>
+  </body>
+</html>

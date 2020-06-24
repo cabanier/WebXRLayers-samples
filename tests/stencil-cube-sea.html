@@ -1,0 +1,654 @@
+<!doctype html>
+<!--
+Copyright 2018 The Immersive Web Community Group
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+-->
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1, user-scalable=no'>
+    <meta name='mobile-web-app-capable' content='yes'>
+    <meta name='apple-mobile-web-app-capable' content='yes'>
+    <link rel='icon' type='image/png' sizes='32x32' href='../favicon-32x32.png'>
+    <link rel='icon' type='image/png' sizes='96x96' href='../favicon-96x96.png'>
+    <link rel='stylesheet' href='../css/common.css'>
+
+    <title>Stencil</title>
+
+    <script src='../js/third-party/dat.gui.min.js'></script>
+  </head>
+  <body>
+    <header>
+      <details id='details-panel' open>
+        <summary>Stencil</summary>
+        <p>
+          Test stencil
+          <a class="back" href="./">Back</a>
+        </p>
+      </details>
+    </header>
+    <script type="module">
+      import {WebXRButton} from '../js/util/webxr-button.js';
+      import {Scene} from '../js/render/scenes/scene.js';
+      import {Renderer, createWebGLContext} from '../js/render/core/renderer.js';
+      import {CubeSeaNode} from '../js/render/nodes/cube-sea.js';
+      import {Gltf2Node} from '../js/render/nodes/gltf2.js';
+      import {InlineViewerHelper} from '../js/util/inline-viewer-helper.js';
+      import {QueryArgs} from '../js/util/query-args.js';
+      import {mat4} from '../js/render/math/gl-matrix.js';
+
+      // If requested, use the polyfill to provide support for mobile devices
+      // and devices which only support WebVR.
+      import WebXRPolyfill from '../js/third-party/webxr-polyfill/build/webxr-polyfill.module.js';
+      if (QueryArgs.getBool('usePolyfill', true)) {
+        let polyfill = new WebXRPolyfill();
+      }
+
+      // Helper methods for saving dat.gui-edited parameters in the URL hash.
+      // Only non-default values are saved.
+      var paramTypes = {};
+      var paramValues = {};
+      var paramDefaults = {};
+      function getBoolParam(name, optDefault) {
+        paramTypes[name] = 'bool';
+        if (!optDefault) optDefault = false;
+        paramDefaults[name] = optDefault;
+        let val = QueryArgs.getBool(name, optDefault);
+        paramValues[name] = val;
+        return val;
+      }
+      function getIntParam(name, optDefault) {
+        paramTypes[name] = 'int';
+        paramDefaults[name] = optDefault;
+        let val = QueryArgs.getInt(name, optDefault);
+        paramValues[name] = val;
+        return val;
+      }
+      function getFloatParam(name, optDefault) {
+        paramTypes[name] = 'float';
+        paramDefaults[name] = optDefault;
+        let val = QueryArgs.getFloat(name, optDefault);
+        paramValues[name] = val;
+        return val;
+      }
+      function getStringParam(name, optDefault) {
+        paramTypes[name] = 'string';
+        paramDefaults[name] = optDefault;
+        let val = QueryArgs.getString(name, optDefault);
+        paramValues[name] = val;
+        return val;
+      }
+      function updateHash() {
+        let pairs = [];
+        for (let rawKey in paramTypes) {
+          let rawVal = paramValues[rawKey];
+          if (rawVal == paramDefaults[rawKey])
+            continue;
+          let type = paramTypes[rawKey];
+          let keyString = encodeURIComponent(rawKey);
+          let valString;
+          if (type == 'bool') {
+            valString = rawVal ? '1' : '0';
+          } else if (type == 'float') {
+            valString = encodeURIComponent((rawVal+0).toFixed(3));
+          } else {
+            valString = encodeURIComponent(rawVal);
+          }
+          pairs.push(keyString + '=' + valString);
+        }
+        let newHash = '#' + pairs.join('&');
+        document.location.hash = newHash;
+      }
+      function getParamSaver(name, optApplyFunc) {
+        if (!(name in paramTypes))
+          throw new Error('unknown param name: ' + name);
+        return (value) => {
+          paramValues[name] = value;
+          updateHash();
+          if (optApplyFunc) {
+            optApplyFunc(value);
+          }
+        };
+      }
+
+      let cubeSea = new CubeSeaNode({
+        imageUrl: '../media/textures/cube-sea.png',
+
+        // Number and size of the static cubes. Use the larger
+        // cube count from heavyGpu to avoid inconsistent defaults.
+        cubeCount: getIntParam('cubeCount', 12),
+        cubeScale: getFloatParam('cubeScale'),
+
+        // If true, use a very heavyweight shader to stress the GPU.
+        heavyGpu: getBoolParam('heavyGpu'),
+
+        // Draw only half the world cubes. Helps test variable render cost
+        // when combined with heavyGpu.
+        halfOnly: getBoolParam('halfOnly'),
+
+        // Automatically spin the world cubes. Intended for automated testing,
+        // not recommended for viewing in a headset.
+        autoRotate: getBoolParam('autorotate'),
+      });
+
+      let appSettings = {
+        // Framebuffer scale override. 1 = default
+        framebufferScale: getFloatParam('framebufferScale', 1),
+
+        // Immersive AR mode
+        arMode: getBoolParam('arMode', false),
+
+        // Use an inline canvas for "magic window" mode?
+        magicWindow: getBoolParam('magicWindow', true),
+
+        // Don't produce frames at all. Simulates a broken app.
+        noFrames: getBoolParam('noFrames', false),
+
+        // Only submit every Nth presentation frame. The first frame is
+        // rendered, so a large value can be used to simulate a splash screen.
+        submitInterval: getIntParam('submitInterval', 1),
+
+        // Busy wait for the specified time to simulate CPU intensive JS.
+        simulatedWorkTimeMs: getFloatParam('workTime', 0),
+
+        antialias: getBoolParam('antialias', true),
+      };
+
+      function updateCubeSea() {
+        cubeSea.rebuildCubes()
+      }
+
+      // Add GUI fields to edit URL parameters. The dat.gui name (2nd arg)
+      // is the name of the dict parameter. The getParamSaver name is the
+      // name of the hash parameter which may be different.
+      let gui = new dat.GUI({ autoPlace: false });
+      var folderScene = gui.addFolder('Scene options');
+      folderScene.add(cubeSea, 'cubeCount', 4, 14, 1).onFinishChange(
+          getParamSaver('cubeCount', updateCubeSea));
+      folderScene.add(cubeSea, 'cubeScale', 0.2, 2.0, 0.05).onFinishChange(
+          getParamSaver('cubeScale', updateCubeSea));
+      folderScene.add(cubeSea, 'halfOnly').onFinishChange(
+          getParamSaver('halfOnly', updateCubeSea));
+      // heavyGpu currently only gets read on startup.
+      folderScene.add(cubeSea, 'heavyGpu').onFinishChange(
+          getParamSaver('heavyGpu', () => { window.location.reload(false); }));
+      folderScene.add(appSettings, 'simulatedWorkTimeMs', 0, 20, 1).onFinishChange(
+          getParamSaver('workTime'));
+      folderScene.open();
+
+      var folderRender = gui.addFolder('Rendering options');
+      folderRender.add(appSettings, 'framebufferScale', 0, 2, 0.25).onFinishChange(
+          getParamSaver('framebufferScale'));
+      folderRender.add(appSettings, 'antialias').onFinishChange(
+          getParamSaver('antialias'));
+      folderRender.add(appSettings, 'arMode').onFinishChange(
+          getParamSaver('arMode', () => { window.location.reload(false); }));
+      folderRender.add(appSettings, 'magicWindow').onFinishChange(
+          getParamSaver('magicWindow', () => { window.location.reload(false); }));
+      folderRender.open();
+
+      var folderTest = gui.addFolder('Regression testing');
+      folderTest.add(appSettings, 'noFrames').onFinishChange(
+          getParamSaver('noFrames'));
+      folderTest.add(appSettings, 'submitInterval').onFinishChange(
+          getParamSaver('submitInterval'));
+      folderTest.add(cubeSea, 'autoRotate').onFinishChange(
+          getParamSaver('autorotate', updateCubeSea));
+      // Don't auto-open this folder, it's not very interesting for interactive use.
+
+      gui.close();
+
+      let detailsPanel = document.getElementById('details-panel');
+      detailsPanel.appendChild(gui.domElement);
+      detailsPanel.appendChild(document.createElement('br'));
+
+      // TODO: Test variables that still need to be implemented, assuming
+      // they are applicable to WebXR.
+      /*
+      // Use 1024x1024 per eye instead of the recommended base render
+      // resolution.
+      var standardSize = getBoolParam('standardSize', false);
+
+      // Support for automated latency testing.
+      var latencyPatch = getBoolParam('latencyPatch', false);
+      var pureFlickerApp = getBoolParam('pureFlickerApp', false);
+      */
+
+      // XR globals.
+      let xrButton = null;
+      let xrImmersiveRefSpace = null;
+      let inlineViewerHelper = null;
+
+      // WebGL scene globals.
+      let gl = null;
+      let renderer = null;
+      let scene = new Scene();
+      let stencilScene = new Scene();
+      var paused = false;
+
+      stencilScene.addNode(new Gltf2Node({url: '../media/gltf/sunflower/sunflower.gltf'}));
+//      let sponza = new Gltf2Node({url: '../media/gltf/cube-room/cube-room.gltf'});
+//      let sponza = new Gltf2Node({url: '../media/gltf/sponza/Sponza.gltf'});
+//      stencilScene.addNode(sponza);
+//      scene.addNode(sponza);
+      scene.addNode(cubeSea);
+
+      function initXR() {
+        let buttonOptions = {
+          onRequestSession: onRequestSession,
+          onEndSession: onEndSession
+        };
+        if (appSettings.arMode) {
+          buttonOptions.textEnterXRTitle = "START AR";
+          buttonOptions.textXRNotFoundTitle = "AR NOT FOUND";
+          buttonOptions.textExitXRTitle = "EXIT  AR";
+        }
+        xrButton = new WebXRButton(buttonOptions);
+        document.querySelector('header').appendChild(xrButton.domElement);
+
+        let xrMode = appSettings.arMode ? 'immersive-ar' : 'immersive-vr';
+        if (navigator.xr) {
+          navigator.xr.addEventListener('sessiongranted', onSessionGranted);
+          navigator.xr.isSessionSupported(xrMode).then((supported) => {
+            xrButton.enabled = supported;
+          });
+
+          // Set up "magic window" mode.
+          if (appSettings.magicWindow) {
+            navigator.xr.requestSession('inline').then(onSessionStarted);
+          }
+        }
+      }
+
+      function initGL() {
+        if (gl)
+          return;
+
+        gl = createWebGLContext({
+          xrCompatible: true,
+          stencil:true,
+        });
+        let contextAttributes = gl.getContextAttributes();
+        console.log("haveStencilBuffer? " +  contextAttributes.stencil);
+        if (appSettings.magicWindow) {
+          document.body.appendChild(gl.canvas);
+
+          function onResize() {
+            console.log("devicePixelRatio = " + window.devicePixelRatio + " w = " + gl.canvas.clientWidth + ", h = " + gl.canvas.clientHeight);
+            gl.canvas.width = gl.canvas.clientWidth * window.devicePixelRatio;
+            gl.canvas.height = gl.canvas.clientHeight * window.devicePixelRatio;
+          }
+          window.addEventListener('resize', onResize);
+          onResize();
+        }
+
+        // Set up a non-black clear color so that we can see if something renders wrong.
+        gl.clearColor(0.1, 0.2, 0.3, 1.0);
+
+        gl.stencilMask(0xFF);
+        gl.clearStencil(0x0);
+
+        renderer = new Renderer(gl);
+        scene.setRenderer(renderer);
+        stencilScene.setRenderer(renderer);
+      }
+
+      function onSessionGranted() {
+        console.log("onSessionGranted");
+        onRequestSession();
+      }
+      function onRequestSession() {
+        console.log("onRequestSession");
+        let xrMode = appSettings.arMode ? 'immersive-ar' : 'immersive-vr';
+        return navigator.xr.requestSession('immersive-vr', {
+            optionalFeatures: ['high-refresh-rate', 'no-fixed-foveation'] 
+        }).then((session) => {
+          xrButton.setSession(session);
+          session.isImmersive = true;
+          onSessionStarted(session);
+        });
+      }
+
+      function onSessionStarted(session) {
+        session.addEventListener('end', onSessionEnded);
+        session.addEventListener('visibilitychange', onVisibilityChange);
+
+        session.addEventListener('selectstart', () => { console.log("selectstart"); });
+        session.addEventListener('select', () => { console.log("select"); });
+        session.addEventListener('selectend', () => { console.log("selectend"); });
+
+        initGL();
+        scene.inputRenderer.useProfileControllerMeshes(session);
+
+        let glLayer = new XRWebGLLayer(session, gl, {
+          framebufferScaleFactor: appSettings.framebufferScale,
+          antialias: appSettings.antialias,
+          alpha: true,
+          depth: true,
+          stencil: true
+        });
+        session.updateRenderState({ baseLayer: glLayer });
+
+        let refSpaceType = session.isImmersive ? 'local' : 'viewer';
+        session.requestReferenceSpace(refSpaceType).then((refSpace) => {
+          if (session.isImmersive) {
+            xrImmersiveRefSpace = refSpace;
+          } else {
+            inlineViewerHelper = new InlineViewerHelper(gl.canvas, refSpace);
+          }
+          session.requestAnimationFrame(onXRFrame);
+        });
+      }
+
+      function onEndSession(session) {
+        session.end();
+      }
+
+      function onVisibilityChange(event) {
+        console.log("Visibility change: " + event.session.visibilityState);
+        if (event.session.visibilityState == "visible") {
+          paused = false;
+        } else {
+          paused = true;
+        }
+      }
+
+      function onSessionEnded(event) {
+        event.session.end().then(function() { console.log("ended successfully"); }, 
+                                 function() { console.log("already ended") });
+         
+        xrButton.setSession(null);
+      }
+
+
+
+      function createShader(gl, type, source) {
+        var shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        var success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
+        if (success) {
+          return shader;
+        }
+
+        console.log(gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+      }
+
+      function createProgram(gl, vertexShader, fragmentShader) {
+        var program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        var success = gl.getProgramParameter(program, gl.LINK_STATUS);
+        if (success) {
+          return program;
+        }
+
+        console.log(gl.getProgramInfoLog(program));
+        gl.deleteProgram(program);
+      }
+
+      let frameNum = 0;
+      let tmp = 0;
+
+      function onXRFrame(t, frame) {
+        let session = frame.session;
+        let refSpace = session.isImmersive ?
+                         xrImmersiveRefSpace :
+                         inlineViewerHelper.referenceSpace;
+        let pose = frame.getViewerPose(refSpace);
+
+        frameNum++;
+
+        if (!paused) { 
+          scene.startFrame();
+//          stencilScene.startFrame();
+        }
+
+        if (appSettings.simulatedWorkTimeMs > 0) {
+          // Simulate a heavy Javascript workload
+          let start = Date.now();
+          while (Date.now() - start < appSettings.simulatedWorkTimeMs) {
+            // Spin our wheels doing useless BS :)
+            tmp = Math.sin(Math.cos(Math.tan(tmp)));
+          }
+        }
+
+        session.requestAnimationFrame(onXRFrame);
+
+        // Simulate a poorly designed app that doesn't provide frames.
+        if (appSettings.noFrames) {
+          scene.endFrame();
+          stencilScene.endFrame();
+          return;
+        }
+
+        // Simulate an app that's only submitting on a subset of animation
+        // frames. This seems to be legal according to the WebVR spec?
+        // frameNum=0 is submitted, so setting submitInterval to a large
+        // number can simulate a splash screen.
+        if (appSettings.submitInterval && frameNum % appSettings.submitInterval > 0) {
+          return;
+        }
+
+        scene.clear = false;
+        stencilScene.clear = false;
+
+        if (!paused) 
+          scene.updateInputSources(frame, refSpace);
+
+        let glLayer = session.renderState.baseLayer;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, glLayer.framebuffer);
+
+        gl.viewport(0,0,1200,1200);
+
+/*
+//        console.log("stencil = " +gl.getFramebufferAttachmentParameter(gl.FRAMEBUFFER, gl.STENCIL_ATTACHMENT0, gl.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME));
+  //      console.log("depth_stencil = " +gl.getFramebufferAttachmentParameter(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME));
+
+
+        gl.depthMask(false);
+        gl.enable(gl.STENCIL_TEST);
+        gl.disable(gl.DEPTH_TEST);
+        gl.stencilMask(0xFF);
+        gl.depthMask(0xFF);
+//        console.log("gl.getParameter(gl.STENCIL_WRITEMASK) = " + gl.getParameter(gl.STENCIL_WRITEMASK));
+        gl.stencilFunc(gl.ALWAYS, 0x1, 0xFF);
+        gl.stencilOp(gl.KEEP,gl.KEEP,gl.REPLACE);
+        gl.colorMask(gl.FALSE, gl.FALSE, gl.FALSE, gl.FALSE);
+        
+//        console.log("gl.getParameter(gl.COLOR_WRITEMASK) = " + gl.getParameter(gl.COLOR_WRITEMASK));
+
+        gl.depthMask(true);
+        gl.clear(gl.STENCIL_BUFFER_BIT);
+        stencilScene.drawXRFrame(frame, pose);
+        gl.enable(gl.DEPTH_TEST);
+
+        gl.colorMask(true, true, true, true);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.stencilMask(0x0);
+        gl.stencilFunc(gl.EQUAL, 0x0, 0xFF);
+        gl.stencilOp(gl.KEEP,gl.KEEP,gl.KEEP);
+        scene.drawXRFrame(frame, pose);
+        gl.disable(gl.STENCIL_TEST);
+*/
+
+        const vs = `
+        attribute vec4 position;
+        uniform mat4 matrix;
+        void main() {
+          gl_Position = matrix * position;
+        }
+        `;
+
+        const fs = `
+        precision mediump float;
+        uniform vec4 color;
+        void main() {
+          gl_FragColor = color;
+        }
+        `;
+        const vertexShader = createShader(gl, gl.VERTEX_SHADER, vs);
+        const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fs);
+        const program = createProgram(gl, vertexShader, fragmentShader);
+
+        const posLoc = gl.getAttribLocation(program, 'position');
+        const matLoc = gl.getUniformLocation(program, 'matrix');
+        const colorLoc = gl.getUniformLocation(program, 'color');
+
+        const buf = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+           0, -1,
+           1,  1,
+          -1,  1,
+        ]), gl.STATIC_DRAW);
+
+        gl.enableVertexAttribArray(posLoc);
+        gl.vertexAttribPointer(
+            posLoc,    // attribute location
+            2,         // 2 value per vertex
+            gl.FLOAT,  // 32bit floating point values
+            false,     // don't normalize
+            0,         // stride (0 = base on type and size)
+            0,         // offset into buffer
+        );
+
+        for (let view of pose.views) {
+          gl.clearColor(1, 1, 1, 1.0);
+
+          let xrViewport = glLayer.getViewport(view);
+          if (xrViewport) {
+            let vp = xrViewport;
+            gl.viewport(vp.x, vp.y, vp.width, vp.height);
+            gl.scissor(vp.x, vp.y, vp.width, vp.height);
+          }
+
+          // clear the stencil to 0 (the default)
+          gl.enable( gl.SCISSOR_TEST );
+          gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+          gl.disable( gl.SCISSOR_TEST );
+
+          gl.useProgram(program);
+          let m4 = mat4.create();
+
+
+          // turn on the stencil
+          gl.enable(gl.STENCIL_TEST);
+
+          // Set the stencil test so it always passes
+          // and the reference to 1
+          gl.stencilFunc(
+             gl.ALWAYS,    // the test
+             1,            // reference value
+             0xFF,         // mask
+          );
+          // Set it so we replace with the reference value (1)
+          gl.stencilOp(
+             gl.KEEP,     // what to do if the stencil test fails
+             gl.KEEP,     // what to do if the depth test fails
+             gl.REPLACE,  // what to do if both tests pass
+          );
+
+          mat4.fromScaling(m4, [0.2, 0.4, 1]);
+          //mat4.translate(m4, m4, [1,1,0]);
+          // draw a white small triangle
+          gl.uniform4fv(colorLoc, [1, 1, 1, 1]); // white
+          gl.uniformMatrix4fv(matLoc, false, m4);
+          gl.colorMask(gl.FALSE, gl.FALSE, gl.FALSE, gl.FALSE);
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+          gl.colorMask(true, true, true, true);
+
+          // Set the test that the stencil must = 0
+          gl.stencilFunc(
+             gl.EQUAL,     // the test
+             0,            // reference value
+             0xFF,         // mask
+          );
+          // don't change the stencil buffer on draw
+          gl.stencilOp(
+             gl.KEEP,     // what to do if the stencil test fails
+             gl.KEEP,     // what to do if the depth test fails
+             gl.KEEP,  // what to do if both tests pass
+          );
+
+          mat4.fromScaling(m4, [0.9, -0.9, 1]);
+          //mat4.translate(m4, m4, [1,1,0]);
+          // draw a large green triangle            
+          gl.uniform4fv(colorLoc, [0, 1, 0, 1]); // green
+          gl.uniformMatrix4fv(matLoc, false, m4);
+          gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+          gl.flush();
+          gl.finish();
+          let pixels = new Uint8Array(4);
+
+          // check that the main color is used coorectly (green)
+          pixels[0] = pixels[1] = pixels[2] = pixels[3] = 0;
+          gl.readPixels(xrViewport.x + xrViewport.width / 2, xrViewport.y + xrViewport.height/4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+          if (pixels[0] == 0x0 && pixels[1] == 0xFF && pixels[2] == 0x0) { // green?
+            console.log("PASSED1");
+          } else {
+            if (pixels[0] == 0xFF && pixels[1] == 0xFF && pixels[2] == 0xFF) { // white?
+              console.log("FAILED1");
+            } else {
+              console.log("Readpixels is not working: " + gl.getError());
+            }
+            // draw red square to indicate failed test
+            gl.enable( gl.SCISSOR_TEST );
+            gl.clearColor(1, 0, 0, 1);
+            gl.scissor(xrViewport.x + xrViewport.width / 2 - 70, xrViewport.y + xrViewport.height/2 - 70, 140, 140);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.disable( gl.SCISSOR_TEST );
+          }
+
+          
+          // check if stencil worked, i.e. white pixels in the center
+          pixels[0] = pixels[1] = pixels[2] = pixels[3] = 0;
+          gl.readPixels(xrViewport.x + xrViewport.width / 2, xrViewport.y + xrViewport.height/2, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+          if (pixels[0] == 0xFF && pixels[1] == 0xFF && pixels[2] == 0xFF) { // white?
+            console.log("PASSED2");
+          } else {
+            if (pixels[0] == 0x0 && pixels[1] == 0xFF && pixels[2] == 0x0) { // green?
+              console.log("FAILED2");
+              // draw magenta square to indicate failed test
+              gl.clearColor(1, 0, 1, 1);
+            } else {
+              console.log("Readpixels is not working: " + gl.getError());
+              // draw black square to indicate failed test
+              gl.clearColor(0, 0, 0, 1);
+            }
+            gl.enable( gl.SCISSOR_TEST );
+            gl.scissor(xrViewport.x + xrViewport.width / 2 - 50, xrViewport.y + xrViewport.height/2 - 50, 100, 100);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.disable( gl.SCISSOR_TEST );
+          }
+        }
+        if (!paused) 
+          scene.endFrame();
+//          stencilScene.endFrame();
+      }
+
+      // Start the XR application.
+      initXR();
+    </script>
+  </body>
+</html>
