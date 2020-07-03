@@ -420,28 +420,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
         if (equirectlayerbackdrop && (!texture_copied || equirectlayerbackdrop.needsRedraw)) {
           texture_copied = true;
-          let fb = gl.createFramebuffer();
-          let glayer = xrGLFactory.getSubImage(equirectlayerbackdrop, frame);
-
-          const eqr_texture_width = equirectlayerbackdrop.viewPixelWidth;
-          const eqr_texture_height = equirectlayerbackdrop.viewPixelHeight;
-
-          gl.viewport(0, 0, eqr_texture_width, eqr_texture_height);
-          gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, fb);
-          gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glayer.colorTexture, 0);
-
-          gl.disable(gl.SCISSOR_TEST);
-
-          let xrReadFramebuffer = gl.createFramebuffer();
-          gl.bindFramebuffer(gl.READ_FRAMEBUFFER, xrReadFramebuffer);
-          gl.framebufferTexture2D(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, backgroundTexture, 0);
-          gl.blitFramebuffer(0, 0, eqr_texture_width, eqr_texture_height,
-            0, 0, eqr_texture_width, eqr_texture_height, gl.COLOR_BUFFER_BIT, gl.NEAREST);
-
-          gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
-          gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
-          gl.deleteFramebuffer(fb);
-          gl.deleteFramebuffer(xrReadFramebuffer);
+          gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, backgroundTexture);
         }
 
         if (updatevideo || update_every_frame.checked || equirectlayer.needsRedraw) {
