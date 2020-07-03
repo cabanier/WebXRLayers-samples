@@ -455,9 +455,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         }
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, xrFramebuffer);
-        // We need to invalidate the color (and depth, just in case) here to avoid
-        // loading from the previously bound color texture. It will save some GPU time.
-        gl.invalidateFramebuffer(gl.FRAMEBUFFER, [gl.COLOR_ATTACHMENT0, gl.DEPTH_ATTACHMENT]);
 
         let views = [];
         if (session.renderState.layers.length == 3) {
