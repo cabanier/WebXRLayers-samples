@@ -94,7 +94,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     let xrFramebuffer = null;
     let xrReadFramebuffer = null;
     let videoTexture = null;
-    let backgroundTexture = null;
     let updatevideo = false;
     let renderer = null;
     let eqr_pos = { x: 0.0, y: 0.0, z: 0.0 };
@@ -311,7 +310,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         equirectlayer.radius = document.getElementById("radius_txt").value;
 
         if (backdrop.checked) {
-          backgroundTexture = loadTexture('media/textures/mono_equirect_test.png', (w, h) => {
+          loadTexture('media/textures/mono_equirect_test.png', (w, h) => {
             equirectlayerbackdrop = xrGLFactory.createEquirectLayer("texture", {
               space: refSpace,
               viewPixelWidth: w,
