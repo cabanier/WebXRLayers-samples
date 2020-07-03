@@ -431,8 +431,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
           gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 0, 0, eqr_texture_width, eqr_texture_height, 0);
 
-          gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
-          gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
           gl.deleteFramebuffer(xrReadFramebuffer);
         }
 
