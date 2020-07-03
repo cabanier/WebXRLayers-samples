@@ -47,7 +47,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       <select id="videoselect">
         <option value="https://d25a56pc18k0co.cloudfront.net/sloths_binaural_3840_180_3D-injected.mp4">side-by-side 180
           3840x1920 30fps</option>
-        <option value="https://d25a56pc18k0co.cloudfront.net/sloths_binaural_3840x2160_360_3D_v2_injected.mp4">3840x2160 360
+        <option value="https://d25a56pc18k0co.cloudfront.net/sloths_binaural_3840x2160_360_3D_v2_injected.mp4">3840x2160
+          360
           30fps
         </option>
       </select>
@@ -59,11 +60,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       <input type="checkbox" id="lower_fps">60 fps</input>
       <br />
       <button id="xr-button" disabled>XR not found</button>
-      <p>Trigger = pause<br/>
-      Squeeze = show/hide controllers<br/>
-      A/X = forward 15 second<br/>
-      B/Y = back 15 second<br/>
-      Joystick = turn movie</p>
+      <p>Trigger = pause<br />
+        Squeeze = show/hide controllers<br />
+        A/X = forward 15 second<br />
+        B/Y = back 15 second<br />
+        Joystick = turn movie</p>
     </details>
   </header>
   <main style='text-align: center;'>
@@ -330,7 +331,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       // Create a WebGL context to render with, initialized to be compatible
       // with the XRDisplay we're presenting to.
       let canvas = document.createElement('canvas');
-      gl = canvas.getContext('webgl2', { xrCompatible: true, webgl2: false });
+      gl = canvas.getContext('webgl', { xrCompatible: true });
 
       xrFramebuffer = gl.createFramebuffer();
       renderer = new Renderer(gl);
