@@ -435,7 +435,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           let xrReadFramebuffer = gl.createFramebuffer();
           gl.bindFramebuffer(gl.READ_FRAMEBUFFER, xrReadFramebuffer);
           gl.framebufferTexture2D(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, backgroundTexture, 0);
-          gl.readBuffer(gl.COLOR_ATTACHMENT0);
           gl.blitFramebuffer(0, 0, eqr_texture_width, eqr_texture_height,
             0, 0, eqr_texture_width, eqr_texture_height, gl.COLOR_BUFFER_BIT, gl.NEAREST);
 
