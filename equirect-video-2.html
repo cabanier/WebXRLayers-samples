@@ -117,7 +117,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     video.preload = 'auto';
     video.autoload = true;
     const image = new Image();
-
+    function isPowerOf2(value) {
+      return (value & (value - 1)) == 0;
+    }
     function loadTexture(url, complete_callback) {
       image.onload = function () {
         complete_callback(image.width, image.height);
