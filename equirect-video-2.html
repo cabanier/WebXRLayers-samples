@@ -156,7 +156,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     let videoTexture = null;
     let backgroundTexture = null;
     let updatevideo = false;
-    let stereoUtil = null;
     let renderer = null;
     let eqr_pos = { x: 0.0, y: 0.0, z: 0.0 };
     let eqr_orient = { yaw: 0.0, pitch: 0.0, roll: 0.0 };
@@ -337,7 +336,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       renderer = new Renderer(gl);
       scene.setRenderer(renderer);
 
-      stereoUtil = new VRStereoUtil(gl);
       xrFramebuffer = gl.createFramebuffer();
       xrReadFramebuffer = gl.createFramebuffer();
       //?      videoTexture = gl.createTexture();
