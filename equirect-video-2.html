@@ -420,6 +420,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
         if (equirectlayerbackdrop && (!texture_copied || equirectlayerbackdrop.needsRedraw)) {
           texture_copied = true;
+          let glayer = xrGLFactory.getSubImage(equirectlayerbackdrop, frame);
           gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
           gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, backgroundTexture);
         }
