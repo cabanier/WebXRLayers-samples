@@ -426,10 +426,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           const eqr_texture_height = equirectlayerbackdrop.viewPixelHeight;
 
           let xrReadFramebuffer = gl.createFramebuffer();
-          gl.bindFramebuffer(gl.READ_FRAMEBUFFER, xrReadFramebuffer);
-          gl.framebufferTexture2D(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, backgroundTexture, 0);
-
           gl.bindFramebuffer(gl.FRAMEBUFFER, xrReadFramebuffer);
+          gl.framebufferTexture2D(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, backgroundTexture, 0);
           gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
           gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 0, 0, eqr_texture_width, eqr_texture_height, 0);
 
