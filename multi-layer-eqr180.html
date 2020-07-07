@@ -566,6 +566,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 depth_rb : depth_rb } ;
       }
 
+      function doesRBExistForTheTexture(glLayer) {
+        for (let i = 0; i < renderbuffers.length; ++i) {
+          let rb = renderbuffers[i];
+          if (rb.colorTexture == glLayer.colorTexture) {
+            return true;
+          }
+        }
+        return false;  
+      }
+
       function onXRFrame(t, frame) {
         let session = frame.session;
         let refSpace = session.isImmersive ?
@@ -585,17 +595,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           if (want_msaa && pose && renderbuffers.length == 0) {
             // setup renderbuffers
             let glLayer;
-            if (proj_layer.layout != "stereo") {
-              glLayer = xrGLFactory.getSubImage(proj_layer, frame);
+            for (let i = 0; i < pose.views.length; ++i) {
+              let view = pose.views[i];
+              glLayer = xrGLFactory.getViewSubImage(proj_layer, view);
 
-              let rb_desc = createRBForLayer(glLayer);
-              renderbuffers.push(rb_desc);
-            } else {
-              // multi texture
-              for (let i = 0; i < pose.views.length; ++i) {
-                let view = pose.views[i];
-                glLayer = xrGLFactory.getViewSubImage(proj_layer, view);
-
+              if (!doesRBExistForTheTexture(glLayer)) {
                 let rb_desc = createRBForLayer(glLayer);
                 renderbuffers.push(rb_desc);
               }
@@ -770,7 +774,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
         if (want_msaa && session.isImmersive) {
           gl.invalidateFramebuffer(gl.DRAW_FRAMEBUFFER, [gl.DEPTH_ATTACHMENT]);
-          gl.invalidateFramebuffer(gl.READ_FRAMEBUFFER, [gl.DEPTH_ATTACHMENT]);
           for (let i = 0; i < renderbuffers.length; ++i) {
             let rb = renderbuffers[i];
             let fb = framebuffers[i];
