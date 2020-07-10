@@ -459,6 +459,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           let glayer = xrGLFactory.getSubImage(equirectlayer, frame);
 
           gl.disable(gl.SCISSOR_TEST);
+          gl.disable(gl.DEPTH_TEST);
           gl.viewport(glayer.viewport.x, glayer.viewport.y, glayer.viewport.width, glayer.viewport.height);
           gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
           gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glayer.colorTexture, 0);
@@ -486,6 +487,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, glLayer.depthStencilTexture, 0);
 
             gl.enable(gl.SCISSOR_TEST);
+            gl.enable(gl.DEPTH_TEST);
             gl.scissor(viewport.x, viewport.y, viewport.width, viewport.height);
             gl.clearColor(0.0, 0, 0, 0.0);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
