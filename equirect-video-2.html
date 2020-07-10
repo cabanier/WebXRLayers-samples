@@ -431,7 +431,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       // disappear.
       if (pose) {
         let arraylength = session.renderState.layers.length;
-
+/*
         if (equirectlayerbackdrop && (!texture_copied || equirectlayerbackdrop.needsRedraw)) {
           texture_copied = true;
           let glayer = xrGLFactory.getSubImage(equirectlayerbackdrop, frame);
@@ -449,17 +449,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           gl.bindFramebuffer(gl.FRAMEBUFFER, null);
           gl.deleteFramebuffer(xrReadFramebuffer);
         }
-
+*/
         if (updatevideo || update_every_frame.checked || equirectlayer.needsRedraw) {
           needsRedraw = false
           updatevideo = false;
 
           let fb = gl.createFramebuffer();
-          gl.viewport(0, 0, layerWidth, layerHeight);
 
           let glayer = xrGLFactory.getSubImage(equirectlayer, frame);
-          gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glayer.colorTexture, 0);
+
+          gl.disable(gl.SCISSOR_TEST);
+          gl.viewport(glayer.viewport.x, glayer.viewport.y, glayer.viewport.width, glayer.viewport.height);
           gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+          gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glayer.colorTexture, 0);
 
           drawQuad(gl);
 
@@ -485,6 +487,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
             gl.enable(gl.SCISSOR_TEST);
             gl.scissor(viewport.x, viewport.y, viewport.width, viewport.height);
+            gl.clearColor(0.0, 0, 0, 0.0);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
             gl.disable(gl.SCISSOR_TEST);
 
