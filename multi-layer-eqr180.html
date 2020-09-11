@@ -781,10 +781,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             gl.invalidateFramebuffer(gl.READ_FRAMEBUFFER, [gl.DEPTH_ATTACHMENT]);
             gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, xrFinalFramebuffer);
             gl.invalidateFramebuffer(gl.DRAW_FRAMEBUFFER, [gl.DEPTH_ATTACHMENT]);
-            gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, rb.colorTexture, 0);
-            gl.readBuffer (gl.COLOR_ATTACHMENT0);
-            gl.blitFramebuffer(0, 0, rb.textureWidth, rb.textureHeight,
-                               0, 0, rb.textureWidth, rb.textureHeight, gl.COLOR_BUFFER_BIT, gl.LINEAR);
+
+            gl.bindTexture(gl.TEXTURE_2D, rb.colorTexture);
+            gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, rb.textureWidth, rb.textureHeight);
 
             gl.invalidateFramebuffer(gl.READ_FRAMEBUFFER, [gl.COLOR_ATTACHMENT0, gl.DEPTH_ATTACHMENT]);
             gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
