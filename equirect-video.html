@@ -118,6 +118,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       const image = new Image();
       image.onload = function () {
         gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
         gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
           srcFormat, srcType, image);
 
@@ -452,6 +453,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           let glayer = xrGLFactory.getSubImage(equirectlayer, frame);
 
           gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
           gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, videoWidth, videoHeight, gl.RGBA, gl.UNSIGNED_BYTE, video);
         }
 
