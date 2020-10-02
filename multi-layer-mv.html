@@ -106,9 +106,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           webgl2: true
         });
         document.body.appendChild(gl.canvas);
-        
+
         samples = gl.getParameter(gl.MAX_SAMPLES);
-        
+
         mv_ext = gl.getExtension('OCULUS_multiview');
         if (mv_ext) {
           console.log("OCULUS_multiview extension is supported");
@@ -168,10 +168,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
           scene.setRenderer(renderer);
 
-          
+
           xrFramebuffer = gl.createFramebuffer();
           xrGLFactory = new XRWebGLBinding(session, gl);
-          let layer = xrGLFactory.createProjectionLayer("texture-array", {stencil: do_stencil_buffer.checked});
+          let layer = xrGLFactory.createProjectionLayer({textureType: "texture-array", stencil: do_stencil_buffer.checked});
           session.updateRenderState({ layers: [ layer ] });
         } else {
           renderer = new Renderer(gl, false /* multiview */);
@@ -267,7 +267,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
           // Draw(views):
           //   for each object in scene:
-          //     bindProgram();  
+          //     bindProgram();
           //     bindUniforms();
           //     bindBuffers();
           //     bindTextures();

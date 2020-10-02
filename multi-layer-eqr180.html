@@ -493,9 +493,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         xrFinalFramebuffer = gl.createFramebuffer();
         xrGLFactory = new XRWebGLBinding(session, gl);
         session.requestReferenceSpace('local').then((refSpace) => {
-          let projlayer = xrGLFactory.createProjectionLayer("texture", {space: refSpace, depth: !want_msaa, alpha: !noAlpha});
+          let projlayer = xrGLFactory.createProjectionLayer( {space: refSpace, depth: !want_msaa, alpha: !noAlpha});
 
-          let eqrlayer = xrGLFactory.createEquirectLayer("texture", {
+          let eqrlayer = xrGLFactory.createEquirectLayer( {
             space: refSpace,
             viewPixelWidth: eqr_texture_width,
             viewPixelHeight: eqr_texture_height / (stereo_layer.checked ? 2 : 1),
@@ -507,7 +507,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           eqrlayer.lowerVerticalAngle = -Math.PI / 2.0;
           eqrlayer.radius = document.getElementById("radius_txt").value;
 
-          cyl_layer = xrGLFactory.createCylinderLayer("texture", {
+          cyl_layer = xrGLFactory.createCylinderLayer( {
             space: refSpace,
             viewPixelWidth: cyl_texture_width,
             viewPixelHeight: cyl_texture_height / (stereo_layer.checked ? 2 : 1),
@@ -574,7 +574,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             return true;
           }
         }
-        return false;  
+        return false;
       }
 
       function onXRFrame(t, frame) {

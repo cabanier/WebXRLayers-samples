@@ -272,10 +272,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         //quat.fromEuler(orient, 0, 0, 30);
         quadLayer.transform = new XRRigidTransform(pos, {x: orient[0], y: orient[1], z: orient[2], w: orient[3]});
 
-        cyl_layer = xrGLFactory.createCylinderLayer("texture", {
+        cyl_layer = xrGLFactory.createCylinderLayer( {
           space: refSpace,
           viewPixelWidth: cylLayerWidth,
-          viewPixelHeight: cylLayerHeight, 
+          viewPixelHeight: cylLayerHeight,
           layout: "mono"
         });
         cyl_layer.centralAngle = 60 * Math.PI / 180;
@@ -287,14 +287,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         cyl_layer.transform = new XRRigidTransform(pos, {x: orient[0], y: orient[1], z: orient[2], w: orient[3]});
 
 
-        proj_layer = xrGLFactory.createProjectionLayer("texture", {space: refSpace});
+        proj_layer = xrGLFactory.createProjectionLayer( {space: refSpace});
 
 
 
-        eqr_layer = xrGLFactory.createEquirectLayer("texture", {
-          space: refSpace, 
-          viewPixelWidth: eqrLayerWidth, 
-          viewPixelHeight: eqrLayerHeight, 
+        eqr_layer = xrGLFactory.createEquirectLayer( {
+          space: refSpace,
+          viewPixelWidth: eqrLayerWidth,
+          viewPixelHeight: eqrLayerHeight,
           layout: "mono",
           isStatic: true
         });

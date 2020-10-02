@@ -276,7 +276,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         initGL();
         scene.inputRenderer.useProfileControllerMeshes(session);
 
-        
+
         if (session.isImmersive) {
           texture_copied = false;
           cyl_layer = null;
@@ -291,7 +291,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         session.requestReferenceSpace('local-floor').then((refSpace) => {
           console.log("created local-floor reference space");
           if (session.isImmersive) {
-            proj_layer = xrGLFactory.createProjectionLayer("texture", {
+            proj_layer = xrGLFactory.createProjectionLayer( {
               space: refSpace,
               depth:true});
 
@@ -505,19 +505,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         if (session.isImmersive) {
           if (!cyl_layer) {
             if (cyl_texture_width != 0 && cyl_texture_height != 0) {
-              cyl_layer = xrGLFactory.createCylinderLayer("texture", {
+              cyl_layer = xrGLFactory.createCylinderLayer( {
                 space: refSpace,
                 viewPixelWidth: cyl_texture_width,
-                viewPixelHeight: cyl_texture_height / ((stereo_layer.checked)?2:1), 
+                viewPixelHeight: cyl_texture_height / ((stereo_layer.checked)?2:1),
                 layout: ((stereo_layer.checked)?"stereo-top-bottom":"mono")
               });
               cyl_layer.centralAngle = 60 * Math.PI / 180;
               cyl_layer.aspectRatio = cyl_layer.viewPixelWidth/cyl_layer.viewPixelHeight;
               cyl_layer.radius = 2;
-              quad_layer = xrGLFactory.createQuadLayer("texture", {
+              quad_layer = xrGLFactory.createQuadLayer( {
                 space: refSpace,
                 viewPixelWidth: cyl_texture_width,
-                viewPixelHeight: cyl_texture_height / ((stereo_layer.checked)?2:1), 
+                viewPixelHeight: cyl_texture_height / ((stereo_layer.checked)?2:1),
                 layout: ((stereo_layer.checked)?"stereo-top-bottom":"mono")
               });
               quad_layer.width = 4;
@@ -539,7 +539,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
               quad_layer.transform = new XRRigidTransform(pos, {x: orient[0], y: orient[1], z: orient[2], w: orient[3]});
             }
           }
-                    
+
           if (cyl_layer) {
             if (cyl_layer.needsRedraw) {
               texture_copied = false;
@@ -558,9 +558,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
               gl.clear(gl.COLOR_BUFFER_BIT);
               if (cyl_texture_width != 0 && cyl_texture_height != 0) {
                 stereoUtil.blit(false, cyl_texture, 0, 0, 1, 1, cyl_texture_width, cyl_texture_height);
-              }        
+              }
 
-              glayer = xrGLFactory.getSubImage(quad_layer, frame);  
+              glayer = xrGLFactory.getSubImage(quad_layer, frame);
               gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glayer.colorTexture, 0);
 
               gl.disable(gl.SCISSOR_TEST);
@@ -569,14 +569,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
               if (cyl_texture_width != 0 && cyl_texture_height != 0) {
                 stereoUtil.blit(false, cyl_texture, 0, 0, 1, 1, cyl_texture_width, cyl_texture_height);
                 texture_copied = true;
-              }        
+              }
 
               gl.bindFramebuffer(gl.FRAMEBUFFER, null);
               gl.deleteFramebuffer(fb);
             }
           }
         }
-       
+
         let pose = frame.getViewerPose(refSpace);
         let glLayer = null;
 
@@ -604,7 +604,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           if (session.isImmersive) {
 
             glLayer = xrGLFactory.getViewSubImage(proj_layer, view);
-            
+
             glLayer.framebuffer = xrFramebuffer;
             viewport = glLayer.viewport;
             gl.bindFramebuffer(gl.FRAMEBUFFER, xrFramebuffer);

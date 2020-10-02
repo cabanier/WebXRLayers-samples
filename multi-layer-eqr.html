@@ -54,7 +54,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       import {CubeSeaNode} from './js/render/nodes/cube-sea.js';
       import {InlineViewerHelper} from './js/util/inline-viewer-helper.js';
       import {QueryArgs} from './js/util/query-args.js';
-  
+
       // If requested, use the polyfill to provide support for mobile devices
       // and devices which only support WebVR.
       import WebXRPolyfill from './js/third-party/webxr-polyfill/build/webxr-polyfill.module.js';
@@ -285,17 +285,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         xrFramebuffer = gl.createFramebuffer();
         xrGLFactory = new XRWebGLBinding(session, gl);
         session.requestReferenceSpace('local').then((refSpace) => {
-          let projlayer = xrGLFactory.createProjectionLayer("texture", {space: refSpace, stencil: do_stencil_buffer.checked});
-          let eqrlayer = xrGLFactory.createEquirectLayer("texture", {
-            space: refSpace, 
-            viewPixelWidth: eqr_texture_width, 
-            viewPixelHeight: eqr_texture_height / (stereo_layer.checked ? 2 : 1), 
+          let projlayer = xrGLFactory.createProjectionLayer( {space: refSpace, stencil: do_stencil_buffer.checked});
+          let eqrlayer = xrGLFactory.createEquirectLayer( {
+            space: refSpace,
+            viewPixelWidth: eqr_texture_width,
+            viewPixelHeight: eqr_texture_height / (stereo_layer.checked ? 2 : 1),
             layout: ((stereo_layer.checked) ? "stereo-top-bottom" : "mono")
           });
-          cyl_layer = xrGLFactory.createCylinderLayer("texture", {
-            space: refSpace, 
-            viewPixelWidth: cyl_texture_width, 
-            viewPixelHeight: cyl_texture_height / (stereo_layer.checked ? 2 : 1), 
+          cyl_layer = xrGLFactory.createCylinderLayer( {
+            space: refSpace,
+            viewPixelWidth: cyl_texture_width,
+            viewPixelHeight: cyl_texture_height / (stereo_layer.checked ? 2 : 1),
             layout: ((stereo_layer.checked) ? "stereo-top-bottom" : "mono")
           });
           if (change_order.checked) {
@@ -346,7 +346,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           texture_copied = true;
           let fb = gl.createFramebuffer();
           let glayer = xrGLFactory.getSubImage(eqr_layer, frame);
-          
+
           gl.viewport(0, 0, eqr_texture_width, eqr_texture_height);
           gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
           gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glayer.colorTexture, 0);
@@ -355,7 +355,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           gl.clearColor(1, 0, 0, 1);
           gl.clear(gl.COLOR_BUFFER_BIT);
           stereoUtil.blit(false, eqr_texture, 0, 0, 1, 1, eqr_texture_width, eqr_texture_height);
-          
+
           glayer = xrGLFactory.getSubImage(cyl_layer, frame);
           gl.viewport(0, 0, cyl_texture_width, cyl_texture_height);
           gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
@@ -365,7 +365,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           gl.clearColor(0, 1, 0, 1);
           gl.clear(gl.COLOR_BUFFER_BIT);
           stereoUtil.blit(false, cyl_texture, 0, 0, 1, 1, cyl_texture_width, cyl_texture_height);
-          
+
           gl.bindFramebuffer(gl.FRAMEBUFFER, null);
           gl.deleteFramebuffer(fb);
         }
@@ -417,7 +417,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
           // Draw(views):
           //   for each object in scene:
-          //     bindProgram();  
+          //     bindProgram();
           //     bindUniforms();
           //     bindBuffers();
           //     bindTextures();
@@ -452,7 +452,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             if (session.isImmersive) {
 
               glLayer = xrGLFactory.getViewSubImage(proj_layer, view);
-              
+
               glLayer.framebuffer = xrFramebuffer;
               viewport = glLayer.viewport;
               gl.bindFramebuffer(gl.FRAMEBUFFER, xrFramebuffer);
@@ -478,7 +478,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
           scene.drawViewArray(views);
         }
-        
+
         scene.endFrame();
       }
 

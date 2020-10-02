@@ -140,7 +140,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         if (session.isImmersive) {
           xrFramebuffer = gl.createFramebuffer();
           xrGLFactory = new XRWebGLBinding(session, gl);
-          let layer = xrGLFactory.createProjectionLayer("texture", {stencil: do_stencil_buffer.checked});
+          let layer = xrGLFactory.createProjectionLayer( {stencil: do_stencil_buffer.checked});
           session.updateRenderState({ layers: [ layer ] });
         } else {
           let glLayer = new XRWebGLLayer(session, gl);
@@ -225,7 +225,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
           // Draw(views):
           //   for each object in scene:
-          //     bindProgram();  
+          //     bindProgram();
           //     bindUniforms();
           //     bindBuffers();
           //     bindTextures();

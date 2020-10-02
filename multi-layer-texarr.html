@@ -148,7 +148,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
         xrFramebuffer = gl.createFramebuffer();
         xrGLFactory = new XRWebGLBinding(session, gl);
-        let layer = xrGLFactory.createProjectionLayer(texture_array.checked ? "texture-array" : "texture", {});
+        let layer = xrGLFactory.createProjectionLayer({textureType: texture_array.checked ? "texture-array" : "texture"});
         if (single_layer) {
           session.updateRenderState({ layers: [layer] });
 
@@ -159,7 +159,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             session.requestAnimationFrame(onXRFrame);
           });
         } else {
-          let layer2 = xrGLFactory.createProjectionLayer(texture_array.checked ? "texture-array" : "texture", {});
+          let layer2 = xrGLFactory.createProjectionLayer({textureType: texture_array.checked ? "texture-array" : "texture"});
           session.updateRenderState({ layers: [layer, layer2] });
           session.requestReferenceSpace('local').then((refSpace) => {
             xrRefSpace = refSpace;

@@ -350,7 +350,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       session.requestReferenceSpace('local').then((refSpace) => {
         xrRefSpace = refSpace;
 
-        proj_layer = xrGLFactory.createProjectionLayer("texture", { space: refSpace, stencil: false });
+        proj_layer = xrGLFactory.createProjectionLayer({ space: refSpace, stencil: false });
 
         let sideBySide = video.src.includes("3840_180_3D");
 
@@ -363,7 +363,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           height: layerHeight
         });
 
-       /* equirectlayer = xrGLFactory.createEquirectLayer("texture", {
+       /* equirectlayer = xrGLFactory.createEquirectLayer({
           space: refSpace,
           viewPixelWidth: sideBySide ? videoWidth / 2 : videoWidth,
           viewPixelHeight: sideBySide ? videoHeight : videoHeight / 2,
@@ -379,7 +379,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
         if (backdrop.checked) {
           backgroundTexture = loadTexture(gl, 'media/textures/mono_equirect_test.png', (w, h) => {
-            equirectlayerbackdrop = xrGLFactory.createEquirectLayer("texture", {
+            equirectlayerbackdrop = xrGLFactory.createEquirectLayer( {
               space: refSpace,
               viewPixelWidth: w,
               viewPixelHeight: h,
