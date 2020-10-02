@@ -125,7 +125,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         session.requestReferenceSpace('local').then((refSpace) => {
         xrRefSpace = refSpace;
 
-        let layer = xrGLFactory.createCylinderLayer("texture", {space: refSpace, viewPixelWidth: 480, viewPixelHeight: 270, stereo: (stereo_layer.checked ? "stereo" : "mono")});
+        let layer = xrGLFactory.createCylinderLayer({space: refSpace, viewPixelWidth: 480, viewPixelHeight: 270, stereo: (stereo_layer.checked ? "stereo" : "mono")});
         session.updateRenderState({ layers: [ layer ] });
 
           // Inform the session that we're ready to begin drawing.
