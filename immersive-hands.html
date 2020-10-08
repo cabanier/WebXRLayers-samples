@@ -210,6 +210,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
     function updateInputSources(session, frame, refSpace) {
       var radii = new Float32Array(XRHand.LITTLE_PHALANX_TIP+1);
+      var positions = new Float32Array(16*(XRHand.LITTLE_PHALANX_TIP+1));
+      var offset = 0;
       for (let inputSource of session.inputSources) {
         if (!inputSource.hand) {
           continue;
@@ -225,6 +227,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           if (!frame.fillRadii(inputSource.hand, radii)) {
             continue;
           }
+          if (!frame.fillPoses(inputSource.hand, refSpace, positions)) {
+            continue;
+          }
           for (const box of boxes[inputSource.handedness]) {
             let jointPose = null;
             if (inputSource.hand[box.offset] !== null) {
@@ -232,15 +237,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             }
             if (jointPose !== null) {
               scene.addNode(box.node);
-              box.node.translation = [jointPose.transform.position.x, jointPose.transform.position.y, jointPose.transform.position.z, jointPose.transform.position.w];
-              box.node.rotation = [jointPose.transform.orientation.x, jointPose.transform.orientation.y, jointPose.transform.orientation.z, jointPose.transform.orientation.w];
+              box.node.matrix = positions.slice(offset, offset + 16);
+              offset += 16;
               let jointRadius = radii[box.offset];
-              if (jointRadius !== null) {
-                box.node.scale = [jointRadius, jointRadius, jointRadius];
-              } else {
+              //if (jointRadius !== null) {
+              //  box.node.scale = [jointRadius, jointRadius, jointRadius];
+              //} else {
                 // for fingertips
                 box.node.scale = [0.005, 0.005, 0.005];
-              }
+              //}
             } else {
               scene.removeNode(box.node);
             }
