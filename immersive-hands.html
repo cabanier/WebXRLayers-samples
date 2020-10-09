@@ -83,7 +83,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
     function addBox(x, y, z, r, g, b, box_list, offset) {
       let boxBuilder = new BoxBuilder();
-      boxBuilder.pushCube([0, 0, 0], 1.5);
+      boxBuilder.pushCube([0, 0, 0], 1.5 * 0.01);
       let boxPrimitive = boxBuilder.finishPrimitive(renderer);
       let boxMaterial = new PbrMaterial();
       boxMaterial.baseColorFactor.value = [r, g, b, 1];
@@ -244,7 +244,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
               //  box.node.scale = [jointRadius, jointRadius, jointRadius];
               //} else {
                 // for fingertips
-                box.node.scale = [0.005, 0.005, 0.005];
+                //box.node.scale = [0.005, 0.005, 0.005];
               //}
             } else {
               scene.removeNode(box.node);
