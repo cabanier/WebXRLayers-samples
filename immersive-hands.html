@@ -209,10 +209,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     }
 
     function updateInputSources(session, frame, refSpace) {
-      var radii = new Float32Array(XRHand.LITTLE_PHALANX_TIP+1);
-      var positions = new Float32Array(16*(XRHand.LITTLE_PHALANX_TIP+1));
-      var offset = 0;
+      let radii = new Float32Array(XRHand.LITTLE_PHALANX_TIP+1);
+      let positions = new Float32Array(16*(XRHand.LITTLE_PHALANX_TIP+1));
       for (let inputSource of session.inputSources) {
+        let offset = 0;
         if (!inputSource.hand) {
           continue;
         } else {
