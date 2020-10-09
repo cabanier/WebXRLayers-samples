@@ -231,11 +231,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             continue;
           }
           for (const box of boxes[inputSource.handedness]) {
-            let jointPose = null;
-            if (inputSource.hand[box.offset] !== null) {
-              jointPose = frame.getJointPose(inputSource.hand[box.offset], refSpace);
-            }
-            if (jointPose !== null) {
               scene.addNode(box.node);
               box.node.matrix = positions.slice(offset, offset + 16);
               offset += 16;
@@ -246,9 +241,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 // for fingertips
                 //box.node.scale = [0.005, 0.005, 0.005];
               //}
-            } else {
-              scene.removeNode(box.node);
-            }
           }
         }
       }
