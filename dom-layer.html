@@ -87,6 +87,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             // Ask for an optional DOM Overlay, see https://immersive-web.github.io/dom-overlays/
             // Use BODY as the root element.
             navigator.xr.requestSession('immersive-vr', {
+                requiredFeatures: ['layers'],
                 optionalFeatures: ['dom-layer']
             }).then(onSessionStarted, onRequestSessionError);
         } else {
