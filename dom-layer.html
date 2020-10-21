@@ -30,6 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     <link rel='stylesheet' href='css/common.css'>
 
     <title>Multilayer</title>
+    <script src="js/wglu/wglu-program.js"></script>
+    <script src="js/stereo-util.js"></script>
   </head>
   <body>
     <header>
@@ -56,6 +58,73 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
       // WebGL scene globals.
       let gl = null;
+      let eqrlayer = null;
+      let eqr_texture = null;
+      let eqr_texture_width  = 0;
+      let eqr_texture_height = 0;
+      let xrGLFactory = null;
+      let stereoUtil = null;
+
+      //
+      // Initialize a texture and load an image.
+      // When the image finished loading copy it into the texture.
+      //
+      function loadTexture(gl, url, complete_callback) {
+        const texture = gl.createTexture();
+        loadIntoTexture(gl, texture, url, complete_callback);
+        return texture;
+      }
+      function isPowerOf2(value) {
+        return (value & (value - 1)) == 0;
+      }
+      function loadIntoTexture(gl, texture, url, complete_callback) {
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+
+        // Because images have to be download over the internet
+        // they might take a moment until they are ready.
+        // Until then put a single pixel in the texture so we can
+        // use it immediately. When the image has finished downloading
+        // we'll update the texture with the contents of the image.
+        const level = 0;
+        const internalFormat = gl.RGBA;
+        const width = 1;
+        const height = 1;
+        const border = 0;
+        const srcFormat = gl.RGBA;
+        const srcType = gl.UNSIGNED_BYTE;
+        const pixel = new Uint8Array([0, 0, 255, 255]);  // opaque blue
+        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
+                      width, height, border, srcFormat, srcType,
+                      pixel);
+
+        const image = new Image();
+        image.onload = function() {
+          gl.bindTexture(gl.TEXTURE_2D, texture);
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+          gl.texImage2D(gl.TEXTURE_2D, level, internalFormat,
+                        srcFormat, srcType, image);
+
+          // WebGL1 has different requirements for power of 2 images
+          // vs non power of 2 images so check if the image is a
+          // power of 2 in both dimensions.
+          if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+             // Yes, it's a power of 2. Generate mips.
+             gl.generateMipmap(gl.TEXTURE_2D);
+             //?gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+             //?gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+          } else {
+             // No, it's not a power of 2. Turn of mips and set
+             // wrapping to clamp to edge
+             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+          }
+          complete_callback(image.width, image.height);
+        };
+        eqr_texture_width = eqr_texture_height = undefined;
+        image.src = url;
+      }
 
       function checkSupportedState() {
         navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
@@ -104,21 +173,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
         session.addEventListener('end', onSessionEnded);
         let canvas = document.createElement('canvas');
-        gl = canvas.getContext('webgl', {
+        gl = canvas.getContext('webgl2', {
           alpha: true,
           antialias: false,
           xrCompatible: true
         });
+        stereoUtil = new VRStereoUtil(gl);
 
-        var factory = new XRDOMBinding(session);
+        eqr_texture = loadTexture(gl, 'media/textures/mono_equirect_test.png', (w, h) => {
+          eqr_texture_width  = w;
+          eqr_texture_height = h;
+          var factory = new XRDOMBinding(session);
+          xrGLFactory = new XRWebGLBinding(session, gl);
 
-        session.requestReferenceSpace('local').then((refSpace) => {
-          var layer = factory.createQuadLayer({
-            space:  refSpace,
-            url: "https://cabanier.github.io/WebXRLayers-samples/multi-layer-mv.html"
+          session.requestReferenceSpace('local').then((refSpace) => {
+            var layer = factory.createQuadLayer({
+              space:  refSpace,
+              url: "https://cabanier.github.io/WebXRLayers-samples/multi-layer-mv.html"
+            });
+          eqrlayer = xrGLFactory.createEquirectLayer( {
+              space: refSpace,
+              viewPixelWidth: eqr_texture_width,
+              viewPixelHeight: eqr_texture_height,
+              layout:  "mono"
+            });
+
+          session.updateRenderState({ layers: [ eqrlayer, layer] });
+          session.requestAnimationFrame(onXRFrame);
           });
-
-          session.updateRenderState({ layers: [ layer] });
         });
       }
 
@@ -141,9 +223,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       function onXRFrame(t, frame) {
         let session = frame.session;
         session.requestAnimationFrame(onXRFrame);
-        let pose = frame.getViewerPose(xrRefSpace);
 
-        if (pose) {}
+        if (eqrlayer) {
+          let fb = gl.createFramebuffer();
+          let glayer = xrGLFactory.getSubImage(eqrlayer, frame);
+
+          gl.viewport(0, 0, eqr_texture_width, eqr_texture_height);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+          gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glayer.colorTexture, 0);
+
+          gl.disable(gl.SCISSOR_TEST);
+          gl.clearColor(1, 0, 0, 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          stereoUtil.blit(false, eqr_texture, 0, 0, 1, 1, eqr_texture_width, eqr_texture_height);
+          eqrlayer = null;
+
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+          gl.deleteFramebuffer(fb);
+        }
+
       }
 
       initXR();
