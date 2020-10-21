@@ -88,7 +88,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             // Use BODY as the root element.
             navigator.xr.requestSession('immersive-vr', {
                 requiredFeatures: ['layers'],
-                optionalFeatures: ['dom-layer']
+                optionalFeatures: []
             }).then(onSessionStarted, onRequestSessionError);
         } else {
           xrSession.end();
