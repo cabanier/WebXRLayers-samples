@@ -112,10 +112,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         var factory = new XRDOMBinding(session);
 
         session.requestReferenceSpace('local').then((refSpace) => {
-          var layer = factory.createQuadLayer(xrButton, {
+          var layer = factory.createQuadLayer({
             space:  refSpace,
-            width:  2,
-            height: 1
+            url: "https://cabanier.github.io/WebXRLayers-samples/multi-layer-mv.html"
           });
 
           session.updateRenderState({ layers: [ layer] });
