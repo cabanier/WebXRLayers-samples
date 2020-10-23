@@ -185,7 +185,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         gamepad.buttons[index].pressed &&
         !lastFrameButtons[index]);
     }
-
     function videoSelect() {
       let s = document.getElementById("videoselect");
       video.src = s.options[s.selectedIndex].value;
@@ -350,7 +349,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         s = "depth formats:";
         xrGLFactory.supportedDepthStencilFormats().forEach(item => {s += " " + item});
         console.log(s);
-      } catch() {
+      } catch(error) {
         console.log("supportedColorFormats and supportedDepthStencilFormats not supported");
       }
 
