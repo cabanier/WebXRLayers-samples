@@ -343,6 +343,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       //?      videoTexture = gl.createTexture();
 
       xrGLFactory = new XRWebGLBinding(session, gl);
+      try {
+        let s = "color formats:";
+        xrGLFactory.supportedColorFormats().forEach(item => {s += " " + item)});
+        console.log(s);
+        s = "depth formats:";
+        xrGLFactory.supportedDepthStencilFormats().forEach(item => {s += " " + item)});
+        console.log(s);
+      } catch() {
+        console.log("supportedColorFormats and supportedDepthStencilFormats not supported");
+      }
 
       session.requestReferenceSpace('local').then((refSpace) => {
         xrRefSpace = refSpace;
