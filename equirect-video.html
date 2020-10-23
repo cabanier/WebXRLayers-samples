@@ -345,10 +345,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       xrGLFactory = new XRWebGLBinding(session, gl);
       try {
         let s = "color formats:";
-        xrGLFactory.supportedColorFormats().forEach(item => {s += " " + item)});
+        xrGLFactory.supportedColorFormats().forEach(item => {s += " " + item});
         console.log(s);
         s = "depth formats:";
-        xrGLFactory.supportedDepthStencilFormats().forEach(item => {s += " " + item)});
+        xrGLFactory.supportedDepthStencilFormats().forEach(item => {s += " " + item});
         console.log(s);
       } catch() {
         console.log("supportedColorFormats and supportedDepthStencilFormats not supported");
