@@ -58,12 +58,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
       // WebGL scene globals.
       let gl = null;
+      let layer = null;
+      let layer2= null; 
       let eqrlayer = null;
       let eqr_texture = null;
       let eqr_texture_width  = 0;
       let eqr_texture_height = 0;
       let xrGLFactory = null;
       let stereoUtil = null;
+      let layers_state = 0;
 
       //
       // Initialize a texture and load an image.
@@ -171,6 +174,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         // Show which type of DOM Overlay got enabled (if any)
         //document.getElementById('session-info').innerHTML = 'DOM Overlay type: ' + session.domOverlayState.type;
 
+        // By listening for the 'select' event we can find out when the user has
+        // performed some sort of primary input action and respond to it.
+        session.addEventListener('select', onSelect);
+
         session.addEventListener('end', onSessionEnded);
         let canvas = document.createElement('canvas');
         gl = canvas.getContext('webgl2', {
@@ -187,18 +194,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           xrGLFactory = new XRWebGLBinding(session, gl);
 
           session.requestReferenceSpace('local').then((refSpace) => {
-            var layer = factory.createQuadLayer({
+            layer = factory.createQuadLayer({
               space:  refSpace,
-              url: "https://cabanier.github.io/WebXRLayers-samples/multi-layer-mv.html"
+              url: "https://cabanier.github.io/WebXRLayers-samples/multi-layer-mv.html",
+              viewPixelWidth: 1000,
+              viewPixelHeight: 1000,
+              width : 4,
+              height : 2,
+              transform : new XRRigidTransform({x: 1.5, y: 1.0, z: -3.5}, {x: 0, y: 0, z: 0, w: 1}),
             });
-          eqrlayer = xrGLFactory.createEquirectLayer( {
+
+            layer2 = factory.createCylinderLayer({
+              space:  refSpace,
+              url: "https://google.com",
+              viewPixelWidth: 1200,
+              viewPixelHeight: 600,
+              centralAngle : 60 * Math.PI / 180,
+              aspectRatio : 2,
+              radius : 2,
+              transform : new XRRigidTransform({x: -4.5, y: 1.0, z: -2.5}, {x: 0, y: 0.3826834, z: 0, w: 0.9238795}),
+            });
+
+            eqrlayer = xrGLFactory.createEquirectLayer( {
               space: refSpace,
               viewPixelWidth: eqr_texture_width,
               viewPixelHeight: eqr_texture_height,
               layout:  "mono"
             });
 
-          session.updateRenderState({ layers: [ eqrlayer, layer] });
+          session.updateRenderState({ layers: [ eqrlayer, layer, layer2] });
           session.requestAnimationFrame(onXRFrame);
           });
         });
@@ -220,11 +244,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         gl = null;
       }
 
+      function onSelect(ev) {
+        let session = ev.frame.session;
+        ++layers_state;
+        layers_state = layers_state % 3;
+        if (layers_state == 0) {
+          session.updateRenderState({ layers: [ eqrlayer, layer, layer2 ] });
+        } else if (layers_state == 1) {
+          session.updateRenderState({ layers: [ eqrlayer, layer ] });
+        } else if (layers_state == 2) {
+          session.updateRenderState({ layers: [ eqrlayer ] });
+        }
+      }
+
       function onXRFrame(t, frame) {
         let session = frame.session;
         session.requestAnimationFrame(onXRFrame);
 
-        if (eqrlayer) {
+        if (eqrlayer && eqrlayer.needsRedraw) {
           let fb = gl.createFramebuffer();
           let glayer = xrGLFactory.getSubImage(eqrlayer, frame);
 
@@ -236,7 +273,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           gl.clearColor(1, 0, 0, 1);
           gl.clear(gl.COLOR_BUFFER_BIT);
           stereoUtil.blit(false, eqr_texture, 0, 0, 1, 1, eqr_texture_width, eqr_texture_height);
-          eqrlayer = null;
 
           gl.bindFramebuffer(gl.FRAMEBUFFER, null);
           gl.deleteFramebuffer(fb);
