@@ -100,7 +100,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         if (!xrSession) {
           single_layer = true;
           cylinder_layer = false;
-          navigator.xr.requestSession('immersive-vr').then(onSessionStarted);
+          navigator.xr.requestSession('immersive-vr', {requiredFeatures: ['layers']}).then(onSessionStarted);
         } else {
           xrSession.end();
         }
@@ -110,7 +110,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         if (!xrSession) {
           single_layer = false;
           cylinder_layer = false;
-          navigator.xr.requestSession('immersive-vr').then(onSessionStarted);
+          navigator.xr.requestSession('immersive-vr', {requiredFeatures: ['layers']}).then(onSessionStarted);
         } else {
           xrSession.end();
         }

@@ -89,6 +89,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             // Ask for an optional DOM Overlay, see https://immersive-web.github.io/dom-overlays/
             // Use BODY as the root element.
             navigator.xr.requestSession('immersive-vr', {
+                requiredFeatures: ['layers'],
                 optionalFeatures: ['dom-overlay'],
                 domOverlay: {root: document.body}
             }).then(onSessionStarted, onRequestSessionError);
@@ -111,7 +112,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           antialias: false,
           xrCompatible: true
         });
-        session.updateRenderState({ layers: [new XRWebGLLayer(session, gl, {alpha:true, antialias: false}), 
+        session.updateRenderState({ layers: [new XRWebGLLayer(session, gl, {alpha:true, antialias: false}),
                                              new XRWebGLLayer(session, gl, {alpha:true, antialias: false})] });
 //        session.updateRenderState({ layers: [new XRWebGLLayer(session, gl, {alpha:true}) ] });
         session.requestReferenceSpace('local').then((refSpace) => {
@@ -150,22 +151,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           // scene visible.
           const width = layer0.framebufferWidth;
           const height = layer0.framebufferHeight;
-  
+
           gl.disable(gl.SCISSOR_TEST);
           gl.clearColor(0, 0, 0, 0);
           gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-          
+
           gl.enable(gl.SCISSOR_TEST);
           gl.scissor(width / 2 - width / 5,  height / 2 - height / 3, width / 5 * 2, height / 3 * 2);
           let time = Date.now();
           gl.clearColor(Math.cos(time / 2000), Math.cos(time / 4000), Math.cos(time / 6000), 0.5);
           gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 //          console.log(gl.checkFramebufferStatus(gl.FRAMEBUFFER));
-                 
+
           let layer1 = session.renderState.layers[1];
           gl.bindFramebuffer(gl.FRAMEBUFFER, layer1.framebuffer);
-       
+
           // Update the clear color so that we can observe the color in the
           // headset changing over time. Use a scissor rectangle to keep the AR
           // scene visible.
