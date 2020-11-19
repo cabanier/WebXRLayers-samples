@@ -171,7 +171,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
           xrFramebuffer = gl.createFramebuffer();
           xrGLFactory = new XRWebGLBinding(session, gl);
-          let layer = xrGLFactory.createProjectionLayer({textureType: "texture-array", stencil: do_stencil_buffer.checked});
+          let layer = xrGLFactory.createProjectionLayer({textureType: "texture-array",
+            depthFormat: do_stencil_buffer.checked?gl.DEPTH24_STENCIL8:gl.DEPTH_COMPONENT24});
           session.updateRenderState({ layers: [ layer ] });
         } else {
           renderer = new Renderer(gl, false /* multiview */);

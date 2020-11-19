@@ -285,7 +285,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         xrFramebuffer = gl.createFramebuffer();
         xrGLFactory = new XRWebGLBinding(session, gl);
         session.requestReferenceSpace('local').then((refSpace) => {
-          let projlayer = xrGLFactory.createProjectionLayer( {space: refSpace, stencil: do_stencil_buffer.checked});
+          let projlayer = xrGLFactory.createProjectionLayer( {space: refSpace,
+            depthFormat: do_stencil_buffer.checked?gl.DEPTH24_STENCIL8:gl.DEPTH_COMPONENT24});
           let eqrlayer = xrGLFactory.createEquirectLayer( {
             space: refSpace,
             viewPixelWidth: eqr_texture_width,

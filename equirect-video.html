@@ -356,7 +356,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       session.requestReferenceSpace('local').then((refSpace) => {
         xrRefSpace = refSpace;
 
-        proj_layer = xrGLFactory.createProjectionLayer( { space: refSpace, stencil: false });
+        proj_layer = xrGLFactory.createProjectionLayer( { space: refSpace });
 
         let sideBySide = video.src.includes("3840_180_3D");
 

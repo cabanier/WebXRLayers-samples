@@ -409,7 +409,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         xrFramebuffer = gl.createFramebuffer();
         xrGLFactory = new XRWebGLBinding(session, gl);
         session.requestReferenceSpace('local').then((refSpace) => {
-          proj_layer = xrGLFactory.createProjectionLayer( {space: refSpace, stencil: do_stencil_buffer.checked});
+          proj_layer = xrGLFactory.createProjectionLayer( {space: refSpace,
+            depthFormat: do_stencil_buffer.checked?gl.DEPTH24_STENCIL8:gl.DEPTH_COMPONENT24});
           cube_layer = xrGLFactory.createCubeLayer({
             space: refSpace,
             viewPixelWidth: cube_face_size,
