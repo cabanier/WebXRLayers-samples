@@ -279,17 +279,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           layout: "mono"
         });
         cyl_layer.centralAngle = 60 * Math.PI / 180;
-        cyl_layer.aspectRatio = cyl_layer.viewPixelWidth/cyl_layer.viewPixelHeight;
+        cyl_layer.aspectRatio = cylLayerWidth/cylLayerHeight;
         cyl_layer.radius = 2;
         pos = {x: -1.0, y: 2.0, z: -2.0};
         orient = quat.create();//{x:0,y:0,z:0,w:1};
         quat.fromEuler(orient, 60, 30, 0);
         cyl_layer.transform = new XRRigidTransform(pos, {x: orient[0], y: orient[1], z: orient[2], w: orient[3]});
 
-
-        proj_layer = xrGLFactory.createProjectionLayer( {space: refSpace});
-
-
+        proj_layer = xrGLFactory.createProjectionLayer({space: refSpace});
 
         eqr_layer = xrGLFactory.createEquirectLayer( {
           space: refSpace,

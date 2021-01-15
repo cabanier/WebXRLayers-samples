@@ -171,11 +171,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           let numlayers = session.renderState.layers.length;
           let arraylength = session.renderState.layers.length;
           session.renderState.layers.forEach(function (glLayer) {
-            const width = glLayer.viewPixelWidth;
-            const height = glLayer.viewPixelHeight;
             let offset = 0;
             pose.views.forEach(view => {
               let subimage = xrGLFactory.getViewSubImage(glLayer, view);
+              const width = subimage.textureWidth;
+              const height = subimage.textureHeight;
               gl.bindFramebuffer(gl.FRAMEBUFFER, xrFramebuffer);
               gl.viewport(subimage.viewport.x,
                 subimage.viewport.y + subimage.viewport.height / numlayers * layeroffset,

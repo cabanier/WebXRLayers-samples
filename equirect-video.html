@@ -434,8 +434,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           let fb = gl.createFramebuffer();
           let glayer = xrGLFactory.getSubImage(equirectlayerbackdrop, frame);
 
-          const eqr_texture_width = equirectlayerbackdrop.viewPixelWidth;
-          const eqr_texture_height = equirectlayerbackdrop.viewPixelHeight;
+          const eqr_texture_width = equirectlayerbackdrop.textureWidth;
+          const eqr_texture_height = equirectlayerbackdrop.textureHeight;
 
           gl.viewport(0, 0, eqr_texture_width, eqr_texture_height);
           gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, fb);
