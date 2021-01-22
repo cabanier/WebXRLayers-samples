@@ -432,25 +432,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       // disappear.
       if (pose) {
         let arraylength = session.renderState.layers.length;
-/*
-        if (equirectlayerbackdrop && (!texture_copied || equirectlayerbackdrop.needsRedraw)) {
-          texture_copied = true;
-          let glayer = xrGLFactory.getSubImage(equirectlayerbackdrop, frame);
 
-          const eqr_texture_width = equirectlayerbackdrop.viewPixelWidth;
-          const eqr_texture_height = equirectlayerbackdrop.viewPixelHeight;
-
-          let xrReadFramebuffer = gl.createFramebuffer();
-          gl.bindFramebuffer(gl.FRAMEBUFFER, xrReadFramebuffer);
-          gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, backgroundTexture, 0);
-          gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-
-          gl.copyTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 0, 0, eqr_texture_width, eqr_texture_height, 0);
-
-          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-          gl.deleteFramebuffer(xrReadFramebuffer);
-        }
-*/
         if (updatevideo || update_every_frame.checked || equirectlayer.needsRedraw) {
           needsRedraw = false
           updatevideo = false;
