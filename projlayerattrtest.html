@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   <link rel='icon' type='image/png' sizes='96x96' href='favicon-96x96.png'>
   <link rel='stylesheet' href='css/common.css'>
 
-  <title>Test for projection layer attributes</title>
+  <title>Multi layer Texture Array</title>
 </head>
 
 <body>
@@ -38,7 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     <details open>
       <summary>projection layer attributes</summary>
       <p>
-        This sample tests projection layer attributes
+        This sample detects support for projection layer attributes
         <a class="back" href="./">Back</a>
       </p>
       <button id="xr-button" disabled>XR not found</button>
@@ -108,6 +108,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         let canvas = document.createElement('canvas');
         gl = canvas.getContext('webgl2', { xrCompatible: true });
 
+
+        ttt = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, ttt);
+        gl.texImage3D(gl.TEXTURE_2D_ARRAY,
+          0,                                          // level
+          gl.RGBA,                                    // internalFormat
+          100,                                          // width
+          100,                                          // height
+          2,                                          // depth
+          0,                                          // border
+          gl.RGBA,                                    // format
+          gl.UNSIGNED_BYTE,                           // type
+          null);  // data
+        gl.bindTexture(gl.TEXTURE_2D_ARRAY, null);
+
         xrFramebuffer = gl.createFramebuffer();
         xrGLFactory = new XRWebGLBinding(session, gl);
         let layer = xrGLFactory.createProjectionLayer({textureType: "texture"});
@@ -151,33 +166,43 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         // framebuffer cleared, so tracking loss means the scene will simply
         // disappear.
         if (pose) {
-          const layer = session.renderState.layers[0];
-          for (let view of pose.views) {
-            let subimage = xrGLFactory.getViewSubImage(layer, view);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, xrFramebuffer);
-            gl.viewport(subimage.viewport.x,
-              subimage.viewport.y,
-              subimage.viewport.width,
-              subimage.viewport.height);
-
-            let supported = false;
-
-            try {
+          let cnt = 0;
+          let layeroffset = 0;
+          let numlayers = session.renderState.layers.length;
+          let arraylength = session.renderState.layers.length;
+          session.renderState.layers.forEach(function (glLayer) {
+            let offset = 0;
+            pose.views.forEach(view => {
+              let subimage = xrGLFactory.getViewSubImage(glLayer, view);
               const width = subimage.textureWidth;
               const height = subimage.textureHeight;
+              gl.bindFramebuffer(gl.FRAMEBUFFER, xrFramebuffer);
+              gl.viewport(subimage.viewport.x,
+                subimage.viewport.y + subimage.viewport.height / numlayers * layeroffset,
+                subimage.viewport.width,
+                subimage.viewport.height / numlayers);
 
-              supported = (width == layer.textureWidth) &&
-                          (height == layer.textureHeight) &&
-                          (1 == layer.textureLayers);
+              gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, subimage.colorTexture, 0);
+              let status = gl.checkFramebufferStatus(gl.DRAW_FRAMEBUFFER);
+              if (status != gl.FRAMEBUFFER_COMPLETE) {
+                console.log("Ooops! subimage.imageIndex = " + subimage.imageIndex + ", status = " + status);
+              }
+              gl.enable(gl.SCISSOR_TEST);
 
-            } catch {
-              console.log("an exception occured during attribute access")
-            }
+              gl.scissor(subimage.viewport.x,
+                subimage.viewport.y + subimage.viewport.height / numlayers * layeroffset,
+                subimage.viewport.width,
+                subimage.viewport.height / numlayers);
+              cnt++;
 
-            gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, subimage.colorTexture, 0);
-            gl.clearColor(supported?0:1.0, supported?1.0:0, 0, 1.0);
-            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-          }
+              let supported = glLayer.textureWidth !== undefined;
+
+              gl.clearColor(supported?0:1.0, supported?1.0:0, 0, 1.0);
+              gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+              offset++;
+            });
+            layeroffset++;
+          });
         }
       }
 
