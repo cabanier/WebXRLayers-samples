@@ -430,7 +430,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       function renderFrame(gl, leftVP, leftProjMatrix, leftViewMatrix, rightVP, rightProjMatrix, rightViewMatrix, time, numBuffers) 
       {
         const vps = { 0:leftVP, 1:rightVP };
-        gl.clearColor( 0.125, 0.0, 0.125, 1.0);
+        //gl.clearColor( 0.125, 0.0, 0.125, 1.0);
 
         // Render the eye images.
         for (var eye = 0; eye < numBuffers; ++eye )
@@ -487,7 +487,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           // rendered.
           gl.bindFramebuffer(gl.FRAMEBUFFER, glLayer.framebuffer);
 
-          gl.clearColor(0.1, 0.2, 0.3, 1.0);
+          //gl.clearColor(0.1, 0.2, 0.3, 1.0);
 
           // Clear the framebuffer
           gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
