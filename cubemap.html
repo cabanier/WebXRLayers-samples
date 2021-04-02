@@ -30,6 +30,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     <link rel='stylesheet' href='css/common.css'>
     <title>Cubemap Video</title>
 
+    <script src="js/wglu/wglu-program.js"></script>
+    <script src="js/stereo-util-v2.js"></script>
+
   </head>
   <body>
     <header>
@@ -60,13 +63,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       let xrWriteFramebuffer = null;
       let xrReadFramebuffer = null;
       let videoTexture = null;
+      let stereoUtil = null;
 
       // WebGL scene globals.
       let gl = null;
 
       let video = document.createElement('video');
       video.loop = true;
-      video.crossorigin = "anonymous";
+      video.crossOrigin = "anonymous";
       video.src = 'https://oculus-mp4.s3.amazonaws.com/petra.webm';
 
       video.ontimeupdate = () => {
@@ -125,7 +129,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         xrReadFramebuffer = gl.createFramebuffer();
         videoTexture = gl.createTexture();
 
-        cubeLayer = xrGLFactory.createCubeLayer({space: refSpace, viewPixelWidth: 3840, viewPixelHeight: 3840});
+        stereoUtil = new VRStereoUtil(gl);
+
+        cubeLayer = xrGLFactory.createCubeLayer({space: refSpace, viewPixelWidth: 2560, viewPixelHeight: 2560});
         session.updateRenderState({ layers: [ cubeLayer ] });
 
           // Inform the session that we're ready to begin drawing.
@@ -169,16 +175,37 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         // framebuffer cleared, so tracking loss means the scene will simply
         // disappear.
         if (pose) {
-          gl.bindFramebuffer(gl.FRAMEBUFFER, xrWriteFramebuffer);
+          gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, xrWriteFramebuffer);
           gl.bindFramebuffer(gl.READ_FRAMEBUFFER, xrReadFramebuffer);
 
           gl.bindTexture(gl.TEXTURE_2D, videoTexture);
-          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
           gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, video);
           gl.framebufferTexture2D(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, videoTexture, 0);
 
           let glimage = xrGLFactory.getSubImage(cubeLayer, frame);
-          gl.framebufferTexture2D(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_X, glimage.colorTexture, 0);
+
+          gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_NEGATIVE_X, glimage.colorTexture, 0);
+          gl.blitFramebuffer(0, 0, 2560, 1920, 2560, 0, 0, 2560, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+
+          gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, glimage.colorTexture, 0);
+ //         gl.blitFramebuffer(2560, 0, 5120, 1920, 2560, 0, 0, 2560, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+          stereoUtil.blit(false, videoTexture, 1/3, 0, 1/3, .5, 2560, 2560);
+
+          gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_X, glimage.colorTexture, 0);
+          gl.blitFramebuffer(5120, 0, 7680, 1920, 2560, 0, 0, 2560, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+
+          gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, glimage.colorTexture, 0);
+          gl.blitFramebuffer(0, 1920, 2560, 3840, 2560, 0, 0, 2560, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+
+          gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_Z, glimage.colorTexture, 0);
+          gl.blitFramebuffer(2560, 1920, 5120, 3840, 2560, 0, 0, 2560, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+
+          gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_Y, glimage.colorTexture, 0);
+          gl.blitFramebuffer(5120, 1920, 7680, 3840, 2560, 0, 0, 2560, gl.COLOR_BUFFER_BIT, gl.NEAREST);
         }
       }
 

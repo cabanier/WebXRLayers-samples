@@ -145,6 +145,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                       pixel);
 
         const image = new Image();
+        image.crossOrigin = "Anonymous";
         image.onload = function() {
           gl.bindTexture(gl.TEXTURE_2D, texture);
           gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -240,7 +241,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             });
           } else {
             number_of_images = 2;
-            eqr_texture = loadTexture(gl, 'media/textures/mono_equirect_test.png', (w, h) => {
+            eqr_texture = loadTexture(gl, 'https://oculus-mp4.s3.amazonaws.com/Adam%20Savage%20Cave%20CREDIT%20ADAM%20SAVAGE%20and%20ERIC%20CHENG.jpg', (w, h) => {
               eqr_texture_width  = w;
               eqr_texture_height = h;
               onImageLoaded(session);

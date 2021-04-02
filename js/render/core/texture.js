@@ -121,6 +121,7 @@ export class ImageTexture extends Texture {
 export class UrlTexture extends ImageTexture {
   constructor(url) {
     let img = new Image();
+    img.crossOrigin = "Anonymous";
     super(img);
     img.src = url;
   }

@@ -193,7 +193,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
               gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
               gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, video);
               gl.bindFramebuffer(gl.READ_FRAMEBUFFER, xrReadFramebuffer);
-              gl.framebufferTexture2D(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, videoTexture, 0);
+              gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, videoTexture, 0);
               gl.blitFramebuffer(0, video.videoHeight/2*cnt, video.videoWidth, video.videoHeight/2*(cnt+1), x1offset, y1offset, x2offset, y2offset, gl.COLOR_BUFFER_BIT, gl.NEAREST);
               cnt++;
             });
