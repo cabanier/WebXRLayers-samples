@@ -49,6 +49,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
           3840x1920 30fps</option>
         <option value="https://d25a56pc18k0co.cloudfront.net/sloths_binaural_3840x2160_360_3D_v2_injected.mp4">3840x2160 360
           30fps
+        <option value="https://oculus-mp4.s3.amazonaws.com/101_2700p.mp4">5400x2700 180
+          30fps
+        <option value="https://oculus-mp4.s3.amazonaws.com/fountain-3D-4k.mp4">4096x4096 360 side-by-side
         </option>
       </select>
       <input type="checkbox" id="update_every_frame">Update every frm</input>
@@ -192,8 +195,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       switch (s.selectedIndex) {
         case 0: videoWidth = 3840; videoHeight = 1920; break;
         case 1: videoWidth = 3840; videoHeight = 2160; break;
-        case 2: videoWidth = 3840; videoHeight = 2160; break;
-        case 3: videoWidth = 2160; videoHeight = 2160; break;
+        case 2: videoWidth = 5400; videoHeight = 2700; break;
+        case 3: videoWidth = 4096; videoHeight = 4096; break;
         case 4: videoWidth = 2880; videoHeight = 2880; break;
         case 5: videoWidth = 1920; videoHeight = 1920; break;
         case 6: videoWidth = 3840; videoHeight = 3840; break;
@@ -294,9 +297,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         // hide projection layer
         if (buttonPressedThisFrame(gamepad, lastFrameButtons, 1)) {
           if (session.renderState.layers.length == 3) {
-            session.updateRenderState({ layers: [equirectlayerbackdrop, equirectlayer] });
+            if (backdrop)
+              session.updateRenderState({ layers: [equirectlayerbackdrop, equirectlayer] });
+            else
+              session.updateRenderState({ layers: [equirectlayerbackdrop] });
           } else {
-            session.updateRenderState({ layers: [equirectlayerbackdrop, equirectlayer, proj_layer] });
+            if (backdrop)
+              session.updateRenderState({ layers: [equirectlayerbackdrop, equirectlayer, proj_layer] });
+            else
+              session.updateRenderState({ layers: [equirectlayer, proj_layer] });
           }
         }
 
@@ -358,7 +367,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
         proj_layer = xrGLFactory.createProjectionLayer( { space: refSpace });
 
-        let sideBySide = video.src.includes("3840_180_3D");
+        let sideBySide = video.src.includes("3840_180_3D") || video.src.includes("101_2700p");
 
         equirectlayer = xrGLFactory.createEquirectLayer( {
           space: refSpace,
