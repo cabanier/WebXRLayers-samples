@@ -11,7 +11,7 @@ header {
   z-index: 2;
   left: 0px;
   text-align: left;
-  max-width: 620px;
+  max-width: 420px;
   padding: 0.5em;
   background-color: rgba(255, 255, 255, 0.90);
   margin-bottom: 0.5em;
@@ -61,4 +61,21 @@ canvas {
   white-space: nowrap;
   margin-right: 0.2em;
   margin-left: 0.2em;
+}
+
+/* Used for the 'barebones' samples */
+.barebones-button {
+  font-family: "Karla", sans-serif;
+  border: rgb(80, 168, 252) 2px solid;
+  border-radius: 2px;
+  box-sizing: border-box;
+  background: none;
+  height: 55px;
+  min-width: 176px;
+  display: inline-block;
+  position: relative;
+  cursor: pointer;
+  font-size: 18px;
+  color: rgb(80, 168, 252);
+  background-color: rgba(255, 255, 255, 0.7);
 }
