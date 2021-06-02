@@ -98,6 +98,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       let img_tag;
       let img_tag_ready = false;
 
+      function buttonPressedThisFrame(gamepad, index) {
+        return (index < gamepad.buttons.length &&
+          gamepad.buttons[index].pressed);
+      }
+
       function initXR() {
         xrButton = new WebXRButton({
           onRequestSession: onRequestSession,
@@ -578,6 +583,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
               cube_layer.orientation = new DOMPointReadOnly(orient[0], orient[1], orient[2], orient[3]);
             }
           }
+
+          // switch projection layer to opaque and back
+          for (let source of session.inputSources) {
+            if (source.gamepad) {
+              // Toggle Play/Pause on primary button press
+              if (buttonPressedThisFrame(source.gamepad, 0)) {
+                proj_layer.blendTextureSourceAlpha = !proj_layer.blendTextureSourceAlpha;
+              }
+            }
+          }
+
           let views = [];
           for (let view of pose.views) {
             let viewport = null;
