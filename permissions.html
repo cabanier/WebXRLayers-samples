@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset='utf-8'>
+  <link rel='icon' type='image/png' sizes='32x32' href='favicon-32x32.png'>
+  <link rel='icon' type='image/png' sizes='96x96' href='favicon-96x96.png'>
+
+  <title>Permissions test</title>
+</head>
+
+<body>
+<button id="start">
+start
+</button>
+
+<script>
+function  v() {
+  navigator.geolocation.getCurrentPosition((position) => {
+  doSomething(position.coords.latitude, position.coords.longitude);
+});
+    navigator.mediaDevices.getUserMedia({video: false, audio: true}).then( stream => {
+        window.localStream = stream; // A
+        window.localAudio.srcObject = stream; // B
+        window.localAudio.autoplay = true; // C
+    }).catch( err => {
+        console.log("u got an error:" + err)
+    });
+}
+
+start.onclick = v;
+
+</script>
+</body>
+
+</html>
