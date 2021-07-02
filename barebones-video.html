@@ -29,7 +29,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     <link rel='icon' type='image/png' sizes='96x96' href='favicon-96x96.png'>
     <link rel='stylesheet' href='css/common.css'>
     <title>Barebones Video</title>
-
+    <script src="js/wglu/wglu-program.js"></script>
+    <script src="js/stereo-util.js"></script>
   </head>
   <body>
     <header>
@@ -57,8 +58,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       let xrGLFactory = null;
       let xrFramebuffer = null;
       let xrReadFramebuffer = null;
+      let xrRenderbuffer = null;
       let videoTexture = null;
       let updatevideo = false;
+      let stereoUtil = null;
+      let ext = null;
 
       // WebGL scene globals.
       let gl = null;
@@ -117,15 +121,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         // with the XRDisplay we're presenting to.
         let canvas = document.createElement('canvas');
         gl = canvas.getContext('webgl2', { xrCompatible: true, webgl2: true });
+        ext = gl.getExtension("EXT_multisampled_render_to_texture");
+        stereoUtil = new VRStereoUtil(gl);
+
         xrFramebuffer = gl.createFramebuffer();
         xrReadFramebuffer = gl.createFramebuffer();
         videoTexture= gl.createTexture();
+/*
+        xrRenderbuffer = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, xrRenderbuffer);
+        ext.renderbufferStorageMultisampleEXT(gl.RENDERBUFFER, 2, gl.DEPTH_COMPONENT16, 512, 512);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+*/
         xrGLFactory = new XRWebGLBinding(session, gl);
 
         session.requestReferenceSpace('local').then((refSpace) => {
         xrRefSpace = refSpace;
 
-        let layer = xrGLFactory.createCylinderLayer({space: refSpace, viewPixelWidth: 480, viewPixelHeight: 270, stereo: (stereo_layer.checked ? "stereo" : "mono")});
+        let layer = xrGLFactory.createCylinderLayer({space: refSpace, viewPixelWidth: 512, viewPixelHeight: 512, layout: (stereo_layer.checked ? "stereo-top-bottom" : "mono")});
         session.updateRenderState({ layers: [ layer ] });
 
           // Inform the session that we're ready to begin drawing.
@@ -170,7 +183,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         // disappear.
         if (pose) {
           let arraylength = session.renderState.layers.length;
-          gl.bindFramebuffer(gl.FRAMEBUFFER, xrFramebuffer);
           session.renderState.layers.forEach(glLayer => {
             let cnt = 0;
             let eyes = ["none"];
@@ -187,16 +199,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
               let x2offset = subimage.viewport.x + subimage.viewport.width;
               let y2offset = subimage.viewport.y + subimage.viewport.height;
 
-              gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, subimage.colorTexture, 0);
+              gl.bindFramebuffer(gl.FRAMEBUFFER, xrFramebuffer);
+//              gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, xrRenderbuffer);
+              ext.framebufferTexture2DMultisampleEXT(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, subimage.colorTexture, 0, 4);
+              gl.bindTexture(gl.TEXTURE_2D, videoTexture);
+              gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+              gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+              gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+              gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
               gl.bindTexture(gl.TEXTURE_2D, videoTexture);
               gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
               gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, video);
-              gl.bindFramebuffer(gl.READ_FRAMEBUFFER, xrReadFramebuffer);
-              gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, videoTexture, 0);
-              gl.blitFramebuffer(0, video.videoHeight/2*cnt, video.videoWidth, video.videoHeight/2*(cnt+1), x1offset, y1offset, x2offset, y2offset, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+              stereoUtil.blit(false, videoTexture, 0, 0, 1, 1, 512, stereo_layer.checked ? 1024 : 512);
+
+//              gl.clearColor(1, 0, 0, 1);
+//              gl.clear(gl.COLOR_BUFFER_BIT);
               cnt++;
             });
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null);
            });
         }
       }
