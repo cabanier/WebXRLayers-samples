@@ -472,6 +472,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
           gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
           gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.GL_MIRRORED_REPEAT);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.GL_MIRRORED_REPEAT);
           gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, videoWidth, videoHeight, gl.RGBA, gl.UNSIGNED_BYTE, video);
         }
 
